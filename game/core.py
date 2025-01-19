@@ -12,14 +12,14 @@ _WIN_REWARD = 10
 _LOSE_REWARD = -10
 
 @dataclass
-class BoardState:
+class BoardState(board_size=10):
     boards: List[np.ndarray] = field(default_factory=lambda: [
-        np.zeros((10, 10), dtype=int),
-        np.zeros((10, 10), dtype=int)
+        np.zeros((board_size, board_size), dtype=int),
+        np.zeros((board_size, board_size), dtype=int)
     ])
     hit_boards: List[np.ndarray] = field(default_factory=lambda: [
-        np.zeros((10, 10), dtype=int),
-        np.zeros((10, 10), dtype=int)
+        np.zeros((board_size, board_size), dtype=int),
+        np.zeros((board_size, board_size), dtype=int)
     ])
     ship_coords: List[Dict[str, List[Tuple[int, int]]]] = field(default_factory=lambda: [{}, {}])
     remaining_hits: List[int] = field(default_factory=lambda: [0, 0])
