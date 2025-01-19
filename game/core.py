@@ -12,19 +12,25 @@ _WIN_REWARD = 10
 _LOSE_REWARD = -10
 
 @dataclass
-class BoardState(board_size=10):
-    boards: List[np.ndarray] = field(default_factory=lambda: [
-        np.zeros((board_size, board_size), dtype=int),
-        np.zeros((board_size, board_size), dtype=int)
-    ])
-    hit_boards: List[np.ndarray] = field(default_factory=lambda: [
-        np.zeros((board_size, board_size), dtype=int),
-        np.zeros((board_size, board_size), dtype=int)
-    ])
+class BoardState:
+    size: Tuple[int, int] = (10, 10)  # Default size is 10x10
+    boards: List[np.ndarray] = field(init=False)  # Remove default_factory
+    hit_boards: List[np.ndarray] = field(init=False)  # Remove default_factory
     ship_coords: List[Dict[str, List[Tuple[int, int]]]] = field(default_factory=lambda: [{}, {}])
     remaining_hits: List[int] = field(default_factory=lambda: [0, 0])
     current_player: int = 0
     done: bool = False
+
+    def __post_init__(self):
+        # Initialize boards after size is set
+        self.boards = [
+            np.zeros(self.size, dtype=int),
+            np.zeros(self.size, dtype=int)
+        ]
+        self.hit_boards = [
+            np.zeros(self.size, dtype=int),
+            np.zeros(self.size, dtype=int)
+        ]
 
 class BattleshipEnv:
     def __init__(self, board_size=10, ship_specs=None):
@@ -36,16 +42,16 @@ class BattleshipEnv:
         """
         self.board_size = board_size
         self.ship_specs = ship_specs if ship_specs else {
-            "carrier": 5,
-            "battleship": 4,
+            # "carrier": 5,
+            # "battleship": 4,
             "cruiser": 3,
-            "submarine": 3,
-            "destroyer": 2
+            # "submarine": 3,
+            # "destroyer": 2
         }
 
     def reset(self) -> BoardState:
         """Resets the game environment and returns initial state."""
-        state = BoardState()
+        state = BoardState(size=(self.board_size, self.board_size))
         state = self._place_ships(state, 0)
         state = self._place_ships(state, 1)
         return state

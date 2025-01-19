@@ -1,56 +1,47 @@
 from core import BattleshipEnv
 from visualization import visualize_state_ascii, visualize_state_matplotlib
+import random
+
 
 def main():
     # Create the environment
-    env = BattleshipEnv()
+    board_size = 5
+    env = BattleshipEnv(board_size=board_size)
     
     # Reset to get initial state
     state = env.reset()
     
     # Visualize initial state
     print("\nInitial State:")
-    visualize_state_ascii(state)
-    visualize_state_matplotlib(state)
-    
-    # Let's make some specific moves
-    # Moves are represented as numbers 0-99 for a 10x10 board
-    # To convert row A-J and column 0-9 to a move number:
-    # move = row * 10 + column
-    # For example: 
-    # A0 = 0 * 10 + 0 = 0
-    # B5 = 1 * 10 + 5 = 15
-    # C2 = 2 * 10 + 2 = 22
-    
+    visualize_state_ascii(state, board_size)
+    visualize_state_matplotlib(state, board_size)
+
+    # For a 5x5 board, valid moves are 0-24
     moves = [
-        15,  # B5
-        22,  # C2
-        45,  # E5
-        77,  # H7
-        99   # J9
+        0,   # A0
+        6,   # B1
+        12,  # C2
+        18,  # D3
+        24   # E4
     ]
+
+    moves = random.sample(range(25), 10)
     
+    print("moves = {}".format(moves))
     for move in moves:
-        row, col = divmod(move, 10)
+        print("------------------------------------------------------")
+        row, col = divmod(move, board_size)  # Note: using board_size instead of 10
         print(f"\nMaking move at position: {chr(65+row)}{col}")
         
-        # Make the move
         state, reward, done = env.step(state, move)
-        
-        # Print result
         print(f"Reward: {reward}")
-        if reward == 1:
-            print("HIT!")
-        elif reward == -1:
-            print("MISS!")
         
-        # Visualize the new state
-        visualize_state_ascii(state)
-        visualize_state_matplotlib(state)
+        visualize_state_ascii(state, board_size)
+        visualize_state_matplotlib(state, board_size)
         
         if done:
             print("\nGame Over!")
             break
-
+            
 if __name__ == "__main__":
     main()
