@@ -1,8 +1,28 @@
+"""
+MCTS implementation for Battleship (LEGACY - BROKEN)
+
+This code uses the old two-player environment API and is currently broken.
+It needs to be rewritten to work with the new Gymnasium environment in game/env.py
+
+Issues:
+- References state.current_player which doesn't exist
+- Uses env.step() instead of env.player_move()
+- Hardcoded for 10x10 boards
+- Imports from legacy two-player environment
+
+TODO: Rewrite for new Gymnasium environment
+"""
+
 import numpy as np
 from typing import List, Dict, Optional, Tuple
 import math
 from copy import deepcopy
-from game.core import BoardState, BattleshipEnv, _HIT_IDX, _MISS_IDX
+
+# LEGACY IMPORTS - pointing to old two-player system
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'legacy'))
+from core import BoardState, BattleshipEnv, _HIT_IDX, _MISS_IDX
 
 class Node:
     def __init__(self, state: BoardState, parent: Optional['Node'] = None, action: Optional[int] = None):
