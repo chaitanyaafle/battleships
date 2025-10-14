@@ -1,6 +1,6 @@
 import pygame
 import numpy as np
-from game.core import _HIT_IDX, _MISS_IDX, _SHIP_IDX, _EMPTY_IDX
+from core import _HIT_IDX, _MISS_IDX, _SHIP_IDX, _EMPTY_IDX
 
 class BattleshipVisualizer:
     def __init__(self, cell_size=40):
