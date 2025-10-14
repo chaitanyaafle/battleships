@@ -23,7 +23,7 @@ This repository provides a **Gymnasium-compatible** Battleship environment suita
 ### Visualization
 - **HTML Rendering**: Clean, colorful HTML for Jupyter notebooks
 - **Console Rendering**: ASCII art for terminal/debugging
-- **Pygame Support**: Legacy two-player visualization (in `game/core.py`)
+- **Pygame Support**: Legacy two-player visualization (archived in `legacy/`)
 
 ### Agent Interface
 - **Abstract Base Class**: Easy to implement new agent types
@@ -58,13 +58,23 @@ pip install gymnasium numpy pytest
 
 ## Quick Start
 
-### Run Demo
+### Play Interactively (Human vs Computer)
 
 ```bash
 # Activate environment (if using conda)
 conda activate battleship_env
 
-# Run demo with random agent
+# Play against the computer
+python play_human.py
+```
+
+### Watch Random Agent Demo
+
+```bash
+# Activate environment (if using conda)
+conda activate battleship_env
+
+# Watch random agent play
 python demo.py
 ```
 
@@ -179,30 +189,34 @@ class MyAgent(BattleshipAgent):
 ```
 battleships/
 ├── game/
-│   ├── env.py                     # Gymnasium environment (NEW)
-│   ├── state.py                   # Game state and Ship classes (NEW)
-│   ├── config.py                  # Ship configurations (NEW)
-│   ├── placement.py               # Ship placement with no-touch (NEW)
+│   ├── env.py                     # Gymnasium environment
+│   ├── state.py                   # Game state and Ship classes
+│   ├── config.py                  # Ship configurations
+│   ├── placement.py               # Ship placement with no-touch
 │   ├── agents/
-│   │   ├── base.py               # Abstract agent interface (NEW)
-│   │   └── random_agent.py       # Random baseline agent (NEW)
-│   ├── renderers/
-│   │   ├── html.py               # HTML renderer (NEW)
-│   │   └── console.py            # Console renderer (NEW)
-│   ├── core.py                   # Legacy two-player environment
-│   ├── visualization.py          # Legacy visualizations
-│   ├── visualization_pygame.py   # Legacy pygame visualization
-│   └── main.py                   # Legacy pygame demo
+│   │   ├── base.py               # Abstract agent interface
+│   │   └── random_agent.py       # Random baseline agent
+│   └── renderers/
+│       ├── html.py               # HTML renderer
+│       └── console.py            # Console renderer
+├── legacy/
+│   ├── README.md                 # Legacy code documentation
+│   ├── core.py                   # Old two-player environment
+│   ├── visualization.py          # Old visualizations
+│   ├── visualization_pygame.py   # Old pygame visualization
+│   └── main.py                   # Old pygame demo
 ├── tests/
-│   └── test_placement.py         # Placement tests (NEW)
+│   └── test_placement.py         # Placement tests (19 passing)
 ├── mcts/
-│   └── mcts.py                   # MCTS (needs update for new env)
+│   └── mcts.py                   # MCTS (broken, needs rewrite)
 ├── prompts/
 │   ├── CLAUDE.md                 # Developer documentation
-│   └── prompt.md                 # Design requirements
-├── demo.py                       # Demo script (NEW)
-├── requirements.txt              # Dependencies (NEW)
-├── battleships.ipynb             # Interactive notebook
+│   ├── prompt.md                 # Design requirements
+│   └── research_plan.md          # Research notes
+├── play_human.py                 # Interactive human player
+├── demo.py                       # Random agent demo
+├── requirements.txt              # Dependencies
+├── battleships.ipynb             # Interactive notebook (needs update)
 └── README.md                     # This file
 ```
 
@@ -245,13 +259,14 @@ See `prompts/CLAUDE.md` for:
 
 ## Legacy Code
 
-The original two-player environment is preserved in:
-- `game/core.py` - Two-player game logic
-- `game/visualization.py` - ASCII/matplotlib rendering
-- `game/visualization_pygame.py` - Pygame visualization
-- `game/main.py` - Two-player demo
+The original two-player environment has been archived in `legacy/`:
+- `legacy/core.py` - Old two-player game logic
+- `legacy/visualization.py` - Old ASCII/matplotlib rendering
+- `legacy/visualization_pygame.py` - Old pygame visualization
+- `legacy/main.py` - Old two-player demo
+- `legacy/README.md` - Migration guide and documentation
 
-These may be moved to `legacy/` in a future update.
+See `legacy/README.md` for usage instructions and migration guide to the new Gymnasium environment.
 
 ## License
 
