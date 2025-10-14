@@ -1,43 +1,96 @@
 # Battleship Game Simulation
 
-A Python implementation of the classic Battleship game with support for AI agents, multiple visualization methods, and customizable board configurations.
+A Python implementation of the classic Battleship game designed for AI agent training and comparison.
+
+## Overview
+
+This repository provides a **Gymnasium-compatible** Battleship environment suitable for:
+- Reinforcement Learning (RL) agent training
+- AI agent comparison and benchmarking
+- Interactive experimentation with different strategies
+- Research on game-playing AI
 
 ## Features
 
-- **Flexible Board Sizes**: Support for asymmetric boards (different sizes for each player)
-- **Multiple Visualization Methods**:
-  - ASCII text-based visualization with emoji
-  - Matplotlib static plots
-  - Real-time Pygame visualization
-- **AI Support**: Monte Carlo Tree Search (MCTS) implementation (experimental)
-- **Interactive Development**: Jupyter notebook included for experimentation
+### Core Environment
+- **Gymnasium API**: Standard RL interface (`reset()`, `step()`, `render()`)
+- **Single-Arena Design**: Agent attacks hidden board (classic puzzle-solving)
+- **Adaptive Ship Configuration**: Board size determines fleet composition
+- **No-Touch Constraint**: Ships cannot be adjacent (including diagonally)
+- **Rich Reward Structure**: Rewards for hits (+5), ship sinking (+10), and victory (+100)
+- **Ship Sinking Detection**: Track individual ship destruction
+
+### Visualization
+- **HTML Rendering**: Clean, colorful HTML for Jupyter notebooks
+- **Console Rendering**: ASCII art for terminal/debugging
+- **Pygame Support**: Legacy two-player visualization (in `game/core.py`)
+
+### Agent Interface
+- **Abstract Base Class**: Easy to implement new agent types
+- **Random Agent**: Baseline for comparison
+- **Extensible**: Support for heuristic, RL, LLM, and hybrid agents
 
 ## Installation
 
-### Requirements
-
-- Python 3.7+
-- NumPy
-- Pygame
-- Matplotlib
-- Jupyter (optional, for notebook)
-
-### Setup
+### Using Conda (Recommended)
 
 ```bash
-pip install numpy pygame matplotlib jupyter
+# Create environment
+conda create -n battleship_env python=3.12
+conda activate battleship_env
+
+# Install dependencies
+pip install -r requirements.txt
 ```
+
+### Using pip
+
+```bash
+pip install gymnasium numpy pytest
+```
+
+### Requirements
+
+- Python 3.8+
+- Gymnasium >= 0.29.0
+- NumPy >= 1.24.0
+- pytest >= 7.4.0 (for testing)
 
 ## Quick Start
 
-### Run the game with Pygame visualization
+### Run Demo
 
 ```bash
-cd game
-python main.py
+# Activate environment (if using conda)
+conda activate battleship_env
+
+# Run demo with random agent
+python demo.py
 ```
 
-This will start a game with random players and real-time pygame visualization.
+### Use in Code
+
+```python
+from game.env import BattleshipEnv
+from game.agents.random_agent import RandomAgent
+
+# Create environment
+env = BattleshipEnv(board_size=(10, 10), render_mode="ansi")
+
+# Create agent
+agent = RandomAgent()
+
+# Play episode
+obs, info = env.reset(seed=42)
+done = False
+
+while not done:
+    action = agent.select_action(obs)
+    obs, reward, terminated, truncated, info = env.step(action)
+    done = terminated or truncated
+
+print(env.render())
+```
 
 ### Run in Jupyter Notebook
 
@@ -47,93 +100,163 @@ jupyter notebook battleships.ipynb
 
 ## Usage
 
-### Basic Game Setup
+### Environment Configuration
 
 ```python
-from game.core import BattleshipEnv
+from game.env import BattleshipEnv
 
-# Create environment with custom board sizes
-board_sizes = [(10, 10), (8, 8)]  # Player 1: 10x10, Player 2: 8x8
-ship_specs = {
-    "destroyer": 2,
-    "cruiser": 3,
-    "battleship": 4
-}
+# Default 10x10 board
+env = BattleshipEnv()
 
-env = BattleshipEnv(board_sizes=board_sizes, ship_specs=ship_specs)
-state = env.reset()
+# Custom board size (5x5 to 12x12 supported)
+env = BattleshipEnv(board_size=(8, 8))
+
+# With rendering
+env = BattleshipEnv(board_size=(10, 10), render_mode="html")
 ```
 
-### Making Moves
+### Board Sizes and Ship Configurations
+
+The environment automatically adapts ship fleets to board size:
+
+| Board Size | Ships |
+|------------|-------|
+| 5x5 - 7x7  | Destroyer (2), Cruiser (3) |
+| 8x8 - 9x9  | + Submarine (3) |
+| 10x10+     | + Battleship (4), Carrier (5) |
+
+### Creating Custom Agents
 
 ```python
-# Player 0 attacks position (3, 5)
-action = 3 * board_sizes[0][1] + 5  # Flattened index
-state, reward, done = env.player_move(state, player=0, action=action)
+from game.agents.base import BattleshipAgent
+import numpy as np
 
-# Get valid moves for a player
-valid_moves = env.get_valid_moves(state, player=0)
+class MyAgent(BattleshipAgent):
+    def __init__(self):
+        super().__init__("MyAgent")
+
+    def select_action(self, observation):
+        # observation contains:
+        # - 'attack_board': (rows, cols) array
+        # - 'remaining_ships': (5,) array of ship sizes
+        # - 'move_count': (1,) array
+
+        # Your strategy here
+        attack_board = observation['attack_board']
+        # Return flattened index
+        return 0
+
+    def reset(self):
+        # Reset any internal state
+        pass
 ```
 
-### Visualization
+### Observation and Action Spaces
 
-```python
-# ASCII visualization
-from game.visualization import visualize_state_ascii
-visualize_state_ascii(state, player=0, board_size=10)
+**Action Space**: `Discrete(rows * cols)`
+- Flattened board indices: `action = row * cols + col`
 
-# Pygame visualization
-from game.visualization_pygame import BattleshipVisualizer
-visualizer = BattleshipVisualizer()
-visualizer.initialize_display(board_sizes)
-visualizer.visualize_state(state)
-```
+**Observation Space**: `Dict` with:
+- `attack_board`: `(rows, cols)` array
+  - `0` = unknown (not attacked)
+  - `1` = miss
+  - `2` = hit
+- `remaining_ships`: `(5,)` array of unsunk ship sizes
+- `move_count`: `(1,)` array
 
-## Game Rules
+### Rewards
 
-- Players take turns attacking positions on their opponent's board
-- Each attack returns a reward:
-  - `+1` for hitting a ship
-  - `-1` for missing
-  - `+10` for sinking all opponent ships (winning)
-- Ships are randomly placed at the start of each game
-- A ship is sunk when all its cells are hit
-- First player to sink all opponent ships wins
+| Event | Reward |
+|-------|--------|
+| Miss | -1 |
+| Hit (ship not sunk) | +5 |
+| Ship sunk | +10 |
+| Victory (all ships sunk) | +100 |
+| Invalid move | -50 |
 
 ## Project Structure
 
 ```
 battleships/
 ├── game/
-│   ├── core.py                    # Core game logic and environment
-│   ├── visualization.py           # ASCII and matplotlib visualization
-│   ├── visualization_pygame.py    # Pygame real-time visualization
-│   └── main.py                    # Main entry point with pygame
+│   ├── env.py                     # Gymnasium environment (NEW)
+│   ├── state.py                   # Game state and Ship classes (NEW)
+│   ├── config.py                  # Ship configurations (NEW)
+│   ├── placement.py               # Ship placement with no-touch (NEW)
+│   ├── agents/
+│   │   ├── base.py               # Abstract agent interface (NEW)
+│   │   └── random_agent.py       # Random baseline agent (NEW)
+│   ├── renderers/
+│   │   ├── html.py               # HTML renderer (NEW)
+│   │   └── console.py            # Console renderer (NEW)
+│   ├── core.py                   # Legacy two-player environment
+│   ├── visualization.py          # Legacy visualizations
+│   ├── visualization_pygame.py   # Legacy pygame visualization
+│   └── main.py                   # Legacy pygame demo
+├── tests/
+│   └── test_placement.py         # Placement tests (NEW)
 ├── mcts/
-│   └── mcts.py                    # MCTS AI implementation (experimental)
-├── battleships.ipynb              # Interactive Jupyter notebook
-├── CLAUDE.md                      # Developer documentation
-└── README.md                      # This file
+│   └── mcts.py                   # MCTS (needs update for new env)
+├── prompts/
+│   ├── CLAUDE.md                 # Developer documentation
+│   └── prompt.md                 # Design requirements
+├── demo.py                       # Demo script (NEW)
+├── requirements.txt              # Dependencies (NEW)
+├── battleships.ipynb             # Interactive notebook
+└── README.md                     # This file
 ```
 
-## Board Encoding
+## Testing
 
-Cells in the game boards are encoded as:
-- `0`: Empty water
-- `1`: Ship (only visible in own board)
-- `2`: Hit ship
-- `-1`: Miss
+```bash
+# Run placement tests
+pytest tests/test_placement.py -v
+
+# Run all tests
+pytest tests/ -v
+
+# Check environment compatibility
+python -c "from game.env import BattleshipEnv; env = BattleshipEnv(); print('Environment OK')"
+```
+
+## Game Rules
+
+- Agent attacks a hidden board to find and sink all ships
+- Ships cannot touch each other (including diagonally)
+- Ships are randomly placed at game start
+- A ship is sunk when all its cells are hit
+- Game ends when all ships are sunk
+
+## Future Agent Types (Planned)
+
+1. **Heuristic Agent**: Probability-based targeting (DataGenetics algorithm)
+2. **RL Agent**: PPO/DQN trained via Stable-Baselines3
+3. **LLM Agent**: Claude/GPT with chain-of-thought reasoning
+4. **Hybrid Agent**: RL + LLM combination
 
 ## Development
 
-See `CLAUDE.md` for detailed architecture documentation and development guidance.
+See `prompts/CLAUDE.md` for:
+- Complete architecture documentation
+- Design decisions and rationale
+- Implementation phases
+- Testing strategy
+- Future extensions
+
+## Legacy Code
+
+The original two-player environment is preserved in:
+- `game/core.py` - Two-player game logic
+- `game/visualization.py` - ASCII/matplotlib rendering
+- `game/visualization_pygame.py` - Pygame visualization
+- `game/main.py` - Two-player demo
+
+These may be moved to `legacy/` in a future update.
 
 ## License
 
 See LICENSE file for details.
 
-## Notes
+## Contributing
 
-- The MCTS implementation is experimental and may have bugs
-- Board sizes can be different for each player (asymmetric gameplay)
-- Actions are represented as flattened indices: `action = row * board_width + col`
+Contributions welcome! Please see the design plan in `prompts/CLAUDE.md` for architecture guidelines.

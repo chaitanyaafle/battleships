@@ -55,8 +55,8 @@ def main():
 
     print()
     print(f"Final stats:")
-    print(f"  Ships remaining: {info['ships_remaining']} / {info['total_ships']}")
-    print(f"  Total moves: {info['move_count']}")
+    print(f"  Ships remaining: {info.get('ships_remaining', 0)} / {info.get('total_ships', 'N/A')}")
+    print(f"  Total moves: {info.get('move_count', step_count)}")
 
     env.close()
 
