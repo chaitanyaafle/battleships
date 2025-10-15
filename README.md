@@ -23,11 +23,14 @@ This repository provides a **Gymnasium-compatible** Battleship environment suita
 ### Visualization
 - **HTML Rendering**: Clean, colorful HTML for Jupyter notebooks
 - **Console Rendering**: ASCII art for terminal/debugging
+- **Probability Heatmap**: Side-by-side attack board and probability density visualization
+- **Animated Replay**: Interactive HTML with step controls and auto-play
 - **Pygame Support**: Legacy two-player visualization (archived in `legacy/`)
 
 ### Agent Interface
 - **Abstract Base Class**: Easy to implement new agent types
 - **Random Agent**: Baseline for comparison
+- **Probability Agent**: Near-optimal DataGenetics strategy (median ~49 moves)
 - **Extensible**: Support for heuristic, RL, LLM, and hybrid agents
 
 ## Installation
@@ -68,7 +71,7 @@ conda activate battleship_env
 python play_human.py
 ```
 
-### Watch Random Agent Demo
+### Watch Agent Demos
 
 ```bash
 # Activate environment (if using conda)
@@ -76,6 +79,15 @@ conda activate battleship_env
 
 # Watch random agent play
 python demo.py
+
+# Watch probability agent (DataGenetics optimal strategy)
+python demo_probability.py --mode single --seed 42
+
+# Run multiple games and see statistics
+python demo_probability.py --mode multiple --num-games 20
+
+# Create interactive animated HTML demo
+python create_animated_demo.py --seed 42 --output game.html
 ```
 
 ### Use in Code
@@ -195,10 +207,13 @@ battleships/
 │   ├── placement.py               # Ship placement with no-touch
 │   ├── agents/
 │   │   ├── base.py               # Abstract agent interface
-│   │   └── random_agent.py       # Random baseline agent
+│   │   ├── random_agent.py       # Random baseline agent
+│   │   └── probability_agent.py  # DataGenetics optimal strategy
 │   └── renderers/
 │       ├── html.py               # HTML renderer
-│       └── console.py            # Console renderer
+│       ├── console.py            # Console renderer
+│       ├── probability_html.py   # Probability heatmap visualization
+│       └── animated_html.py      # Interactive game replay
 ├── legacy/
 │   ├── README.md                 # Legacy code documentation
 │   ├── core.py                   # Old two-player environment
@@ -212,9 +227,13 @@ battleships/
 ├── prompts/
 │   ├── CLAUDE.md                 # Developer documentation
 │   ├── prompt.md                 # Design requirements
-│   └── research_plan.md          # Research notes
+│   ├── research_plan.md          # Research notes
+│   └── datagenetics_battleship_strategy.md  # Strategy reference
 ├── play_human.py                 # Interactive human player
 ├── demo.py                       # Random agent demo
+├── demo_probability.py           # Probability agent demo
+├── create_animated_demo.py       # Generate interactive HTML
+├── PROBABILITY_AGENT_README.md   # Probability agent guide
 ├── requirements.txt              # Dependencies
 ├── battleships.ipynb             # Interactive notebook (needs update)
 └── README.md                     # This file
@@ -241,12 +260,32 @@ python -c "from game.env import BattleshipEnv; env = BattleshipEnv(); print('Env
 - A ship is sunk when all its cells are hit
 - Game ends when all ships are sunk
 
-## Future Agent Types (Planned)
+## Implemented Agents
 
-1. **Heuristic Agent**: Probability-based targeting (DataGenetics algorithm)
-2. **RL Agent**: PPO/DQN trained via Stable-Baselines3
-3. **LLM Agent**: Claude/GPT with chain-of-thought reasoning
-4. **Hybrid Agent**: RL + LLM combination
+### 1. Random Agent (`game/agents/random_agent.py`)
+- **Strategy**: Selects random unattacked cells
+- **Performance**: ~96 moves median (baseline)
+- **Use case**: Baseline comparison
+
+### 2. Probability Agent (`game/agents/probability_agent.py`)
+- **Strategy**: DataGenetics optimal probability density algorithm
+- **Performance**: ~49 moves median (56% improvement over random!)
+- **Features**:
+  - Enumerates all valid ship placements
+  - Calculates probability density for each cell
+  - 50× hit-adjacency weighting for target mode
+  - Automatic hunt/target mode switching
+  - Tracks sunk ships to avoid wasted shots
+- **Visualization**: Side-by-side probability heatmap
+- **Source**: http://www.datagenetics.com/blog/december32011/
+
+See `PROBABILITY_AGENT_README.md` for detailed usage and examples.
+
+### Future Agent Types (Planned)
+
+1. **RL Agent**: PPO/DQN trained via Stable-Baselines3
+2. **LLM Agent**: Claude/GPT with chain-of-thought reasoning
+3. **Hybrid Agent**: RL + LLM combination
 
 ## Development
 
