@@ -189,9 +189,9 @@ class BattleshipAgent(ABC):
 **Implemented Agents**:
 - `RandomAgent` - Baseline random strategy (~96 moves median)
 - `ProbabilityAgent` - DataGenetics optimal strategy (~49 moves median, 56% improvement!)
+- `RLAgent` - Wrapper for Stable-Baselines3 models (PPO/DQN)
 
 **Future Agents**:
-- RL (PPO/DQN via Stable-Baselines3)
 - LLM (Claude/GPT with chain-of-thought)
 - Hybrid (RL + LLM)
 
