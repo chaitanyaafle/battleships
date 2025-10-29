@@ -32,8 +32,10 @@ This is a **Gymnasium-compatible Battleship environment** for AI agent training 
 - `game/state.py` - GameState and Ship classes
 - `game/config.py` - Adaptive ship configurations
 - `game/placement.py` - No-touch ship placement
-- `game/agents/` - Agent interfaces (Random, Probability)
+- `game/agents/` - Agent interfaces (Random, Probability, RL)
 - `game/renderers/` - HTML, console, probability heatmap, animated replay
+- `training/` - RL training scripts (PPO, DQN, evaluation)
+- `configs/` - Training configuration files
 - `tests/` - Test suite
 - `demo_probability.py` - Probability agent demo script
 - `create_animated_demo.py` - Generate interactive HTML replays
