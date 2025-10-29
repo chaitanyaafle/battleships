@@ -213,6 +213,9 @@ Issues:
 - `demo.py` - Random agent demonstration
 - `demo_probability.py` - Probability agent demo with visualization
 - `create_animated_demo.py` - Generate interactive HTML replays
+- `training/train_ppo.py` - Train PPO agent
+- `training/train_dqn.py` - Train DQN agent
+- `training/evaluate.py` - Evaluate and compare agents
 - `tests/` - Test suite
 
 **Legacy** (archived):
