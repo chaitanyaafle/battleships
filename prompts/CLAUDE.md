@@ -88,6 +88,18 @@ while not done:
 print(env.render())
 ```
 
+### Train RL Agents
+```bash
+# Train PPO agent (quick prototype)
+PYTHONPATH=. python training/train_ppo.py --no-wandb --timesteps 20000
+
+# Train DQN agent
+PYTHONPATH=. python training/train_dqn.py --no-wandb --timesteps 20000
+
+# Evaluate agents
+PYTHONPATH=. python training/evaluate.py --baselines --models models/*/final_model.zip
+```
+
 ## Current Architecture
 
 ### Core Game Logic (`game/env.py`)
