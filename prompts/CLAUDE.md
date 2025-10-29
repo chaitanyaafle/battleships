@@ -21,6 +21,9 @@ This is a **Gymnasium-compatible Battleship environment** for AI agent training 
 - ✅ Comprehensive test suite
 - ✅ Interactive human player mode
 - ✅ DataGenetics optimal probability agent (median ~49 moves)
+- ✅ RL training infrastructure (PPO/DQN with Stable-Baselines3)
+- ✅ Experiment tracking (W&B + TensorBoard)
+- ✅ Agent evaluation and comparison framework
 
 ### Architecture
 
