@@ -37,3 +37,9 @@ wheels/
 # OS
 .DS_Store
 Thumbs.db
+
+# RL Training
+models/
+logs/
+wandb/
+*.zip
