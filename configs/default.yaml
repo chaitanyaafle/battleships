@@ -1,0 +1,90 @@
+# Default configuration for Battleship RL training
+
+# Environment settings
+environment:
+  board_size: [10, 10]  # (rows, cols)
+  render_mode: null  # Set to "human" or "ansi" for debugging
+
+# Training settings
+training:
+  total_timesteps: 20000  # Quick prototype: 20K timesteps (~10K episodes)
+  eval_freq: 5000  # Evaluate every N timesteps
+  save_freq: 5000  # Save checkpoint every N timesteps
+  n_eval_episodes: 2  # Number of episodes for evaluation
+  verbose: 1  # 0=none, 1=info, 2=debug
+
+# PPO-specific hyperparameters
+ppo:
+  learning_rate: 0.0003  # 3e-4 is standard for PPO
+  n_steps: 256  # Number of steps per update (increased for faster training)
+  batch_size: 128  # Minibatch size for updates (increased for efficiency)
+  n_epochs: 4  # Number of epochs for policy update (reduced for faster training)
+  gamma: 0.99  # Discount factor
+  gae_lambda: 0.95  # GAE lambda for advantage estimation
+  clip_range: 0.2  # PPO clipping parameter
+  ent_coef: 0.01  # Entropy coefficient (encourage exploration)
+  vf_coef: 0.5  # Value function coefficient
+  max_grad_norm: 0.5  # Gradient clipping
+  policy: "MultiInputPolicy"  # Policy type for Dict observation space
+
+  # Network architecture
+  policy_kwargs:
+    net_arch:
+      - 256  # Hidden layer 1
+      - 256  # Hidden layer 2
+      - 128  # Hidden layer 3
+    activation_fn: "relu"  # or "tanh"
+
+# DQN-specific hyperparameters
+dqn:
+  learning_rate: 0.0001  # 1e-4 is typical for DQN
+  buffer_size: 50000  # Replay buffer size
+  learning_starts: 1000  # Steps before learning starts
+  batch_size: 32  # Batch size for training
+  gamma: 0.99  # Discount factor
+  tau: 1.0  # Hard update (1.0) or soft update (0.005)
+  target_update_interval: 500  # Update target network every N steps
+  train_freq: 4  # Train every N steps
+  gradient_steps: 1  # Gradient steps per update
+  exploration_fraction: 0.3  # Fraction of training for exploration
+  exploration_initial_eps: 1.0  # Initial epsilon for exploration
+  exploration_final_eps: 0.05  # Final epsilon (5% random actions)
+  max_grad_norm: 10  # Gradient clipping
+  policy: "MultiInputPolicy"  # Policy type for Dict observation space
+
+  # Network architecture
+  policy_kwargs:
+    net_arch:
+      - 256  # Hidden layer 1
+      - 256  # Hidden layer 2
+      - 128  # Hidden layer 3
+    activation_fn: "relu"
+
+# Logging and experiment tracking
+logging:
+  use_wandb: true  # Enable Weights & Biases logging
+  use_tensorboard: true  # Enable TensorBoard logging
+  project_name: "battleship-rl"  # W&B project name
+  experiment_name: null  # Auto-generated if null
+  log_dir: "logs"  # Directory for TensorBoard logs
+  save_dir: "models"  # Directory for model checkpoints
+
+# Reward structure (from environment)
+# Documented here for reference - changes require environment modification
+rewards:
+  miss: -1  # Small penalty for misses
+  hit: 5  # Reward for hitting a ship
+  sink: 10  # Bonus for sinking a ship
+  win: 100  # Large reward for winning
+  invalid: -50  # Penalty for invalid moves (attacking same cell)
+
+# Evaluation
+evaluation:
+  deterministic: true  # Use deterministic policy for evaluation
+  render: false  # Render evaluation episodes
+  save_replay: false  # Save replay data
+
+  # Baseline agents for comparison
+  baselines:
+    - random  # RandomAgent
+    - probability  # ProbabilityAgent (DataGenetics algorithm)
