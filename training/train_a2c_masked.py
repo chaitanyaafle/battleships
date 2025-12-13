@@ -1,7 +1,11 @@
-"""Train an A2C agent with action masking to play Battleship.
+"""Train an A2C agent with invalid action filtering to play Battleship.
 
 Quick sanity check to see if A2C's simpler, single-pass updates help discover
 the adjacency bonus where PPO failed.
+
+Note: A2C doesn't support native action masking like MaskablePPO. Instead,
+we use InvalidActionFilter wrapper which post-processes actions to prevent
+selecting already-attacked cells.
 """
 
 import sys
@@ -17,12 +21,9 @@ import yaml
 import numpy as np
 import torch
 
-try:
-    from sb3_contrib.common.wrappers import ActionMasker
-except ImportError:
-    print("Error: sb3-contrib not installed!")
-    print("Install with: pip install sb3-contrib")
-    exit(1)
+# A2C doesn't support action masking like MaskablePPO
+# Instead we use a custom wrapper that filters invalid actions
+from game.wrappers import InvalidActionFilter
 
 import wandb
 from stable_baselines3 import A2C
@@ -31,24 +32,6 @@ from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.monitor import Monitor
 
 from game.env import BattleshipEnv
-
-
-def mask_fn(env) -> np.ndarray:
-    """
-    Generate action mask for the current environment state.
-
-    Args:
-        env: Battleship environment
-
-    Returns:
-        Boolean array where True = valid action
-    """
-    if env.state is None:
-        return np.ones(env.action_space.n, dtype=bool)
-
-    # Valid actions are cells that haven't been attacked
-    attack_board = env.state.attack_board
-    return (attack_board == 0).flatten()
 
 
 def load_config(config_path: str = "configs/default.yaml") -> dict:
@@ -160,8 +143,8 @@ def main():
         render_mode=config['environment']['render_mode']
     )
 
-    # Wrap with action masker
-    env = ActionMasker(env, mask_fn)
+    # Wrap with invalid action filter (A2C doesn't support native action masking)
+    env = InvalidActionFilter(env)
 
     # Validate environment
     print("Validating environment...")
@@ -205,7 +188,7 @@ def main():
         print(f"  n_steps: {a2c_config['n_steps']} (single-pass updates)")
         print(f"  ent_coef: {a2c_config['ent_coef']} (high exploration)")
         print(f"  Network architecture: {policy_kwargs.get('net_arch', 'default')}")
-        print(f"  ✨ Action masking: ENABLED")
+        print(f"  ✨ Invalid action filtering: ENABLED")
 
         model = A2C(
             a2c_config['policy'],
