@@ -40,30 +40,47 @@ def evaluate_agent(
     if seed is not None:
         np.random.seed(seed)
 
+    print(f"[DEBUG] Starting episode loop, n_episodes={n_episodes}", flush=True)
     for ep in range(n_episodes):
+        print(f"[DEBUG] Episode {ep + 1} starting...", flush=True)
+        if verbose:
+            print(f"  Starting episode {ep + 1}/{n_episodes}...", end='', flush=True)
+
+        print(f"[DEBUG] About to reset env...", flush=True)
         obs, _ = env.reset(seed=seed + ep if seed is not None else None)
+        print(f"[DEBUG] Env reset complete", flush=True)
         agent.reset()
 
         done = False
         episode_reward = 0
         episode_length = 0
 
+        print(f"[DEBUG] Starting episode loop...", flush=True)
         while not done:
+            if episode_length == 0:
+                print(f"[DEBUG] About to select first action...", flush=True)
             action = agent.select_action(obs)
+            if episode_length == 0:
+                print(f"[DEBUG] First action selected: {action}", flush=True)
             obs, reward, terminated, truncated, info = env.step(action)
             done = terminated or truncated
             episode_reward += reward
             episode_length += 1
 
+            # Debug: print progress for very long episodes
+            if verbose and episode_length % 50 == 0:
+                print(f" {episode_length} moves...", end='', flush=True)
+
         episode_lengths.append(episode_length)
         episode_rewards.append(episode_reward)
 
         # Check if won (all ships sunk)
-        if info.get('all_sunk', False):
+        if info.get('result') == 'win':
             wins += 1
 
-        if verbose and (ep + 1) % 10 == 0:
-            print(f"  Episode {ep + 1}/{n_episodes}: {episode_length} moves, reward={episode_reward:.1f}")
+        if verbose:
+            win_status = "WIN" if info.get('result') == 'win' else "TRUNCATED" if truncated else "?"
+            print(f" Done! {episode_length} moves, reward={episode_reward:.1f} [{win_status}]")
 
     return {
         'agent_name': agent.name,
@@ -102,10 +119,13 @@ def compare_agents(
     results = []
 
     for agent in agents:
+        print(f"\n[DEBUG] About to evaluate {agent.name}...", flush=True)
         if verbose:
             print(f"\nEvaluating {agent.name}...")
 
+        print(f"[DEBUG] Calling evaluate_agent...", flush=True)
         result = evaluate_agent(agent, env, n_episodes, seed, verbose)
+        print(f"[DEBUG] evaluate_agent returned", flush=True)
         results.append(result)
 
         if verbose:
@@ -233,6 +253,7 @@ def main():
             else:
                 agent_name = f"RL ({model_path.parent.name})"
 
+            print(f"Loading model from {model_path}...", flush=True)
             try:
                 agent = RLAgent(
                     name=agent_name,

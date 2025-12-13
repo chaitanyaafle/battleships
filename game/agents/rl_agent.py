@@ -113,11 +113,24 @@ class RLAgent(BattleshipAgent):
         Returns:
             action: Flattened board index
         """
-        # SB3 models expect flat dict observations
-        action, _states = self.model.predict(
-            observation,
-            deterministic=self.deterministic
-        )
+        # Check if we need to provide action mask (for MaskablePPO)
+        if MASKABLE_PPO_AVAILABLE and isinstance(self.model, MaskablePPO):
+            # Generate action mask from observation
+            # Valid actions are cells that haven't been attacked yet
+            attack_board = observation['attack_board']
+            action_masks = (attack_board == 0).flatten()
+
+            action, _states = self.model.predict(
+                observation,
+                action_masks=action_masks,
+                deterministic=self.deterministic
+            )
+        else:
+            # Standard PPO/DQN don't need action masks
+            action, _states = self.model.predict(
+                observation,
+                deterministic=self.deterministic
+            )
 
         # Convert numpy array to int if needed
         if isinstance(action, np.ndarray):
