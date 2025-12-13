@@ -62,12 +62,13 @@ def load_config(config_path: str = "configs/default.yaml") -> dict:
 class EpisodeStatsCallback(BaseCallback):
     """
     Custom callback to log additional episode statistics to wandb.
-    Logs min, max, and std of episode lengths and rewards.
+    Logs min, max, and std of episode lengths, rewards, and adjacency exploitation.
     """
     def __init__(self, verbose=0):
         super().__init__(verbose)
         self.episode_lengths = []
         self.episode_rewards = []
+        self.adjacency_rates = []  # Track how often agent exploits adjacency opportunities
 
     def _on_step(self) -> bool:
         # Check if episode ended
@@ -85,16 +86,28 @@ class EpisodeStatsCallback(BaseCallback):
                     self.episode_lengths.append(ep_len)
                     self.episode_rewards.append(ep_rew)
 
+                    # Track adjacency exploitation rate
+                    if "adjacency_rate" in info:
+                        self.adjacency_rates.append(info["adjacency_rate"])
+
                     # Log to wandb every episode
                     if len(self.episode_lengths) >= 1:
-                        wandb.log({
+                        log_dict = {
                             "rollout/ep_len_min": min(self.episode_lengths[-100:]),  # Min over last 100 episodes
                             "rollout/ep_len_max": max(self.episode_lengths[-100:]),
                             "rollout/ep_len_std": np.std(self.episode_lengths[-100:]),
                             "rollout/ep_rew_min": min(self.episode_rewards[-100:]),
                             "rollout/ep_rew_max": max(self.episode_rewards[-100:]),
                             "rollout/ep_rew_std": np.std(self.episode_rewards[-100:]),
-                        }, step=self.num_timesteps)
+                        }
+
+                        # Add adjacency metrics if available
+                        if len(self.adjacency_rates) > 0:
+                            log_dict["rollout/adjacency_rate_mean"] = np.mean(self.adjacency_rates[-100:])
+                            log_dict["rollout/adjacency_rate_min"] = min(self.adjacency_rates[-100:])
+                            log_dict["rollout/adjacency_rate_max"] = max(self.adjacency_rates[-100:])
+
+                        wandb.log(log_dict, step=self.num_timesteps)
 
         return True
 
@@ -107,6 +120,7 @@ def main():
     parser.add_argument('--timesteps', type=int, default=None)
     parser.add_argument('--name', type=str, default=None)
     parser.add_argument('--resume', type=str, default=None, help='Path to model to resume training from')
+    parser.add_argument('--env-verbose', action='store_true', help='Show adjacency bonus and escalating penalty messages')
     args = parser.parse_args()
 
     # Load configuration
@@ -147,7 +161,8 @@ def main():
     # Create environment
     env = BattleshipEnv(
         board_size=tuple(config['environment']['board_size']),
-        render_mode=config['environment']['render_mode']
+        render_mode=config['environment']['render_mode'],
+        verbose=args.env_verbose
     )
 
     # Wrap with action masker
@@ -162,7 +177,10 @@ def main():
     env = Monitor(env, str(log_dir / "train"))
 
     # Create eval environment
-    eval_env = BattleshipEnv(board_size=tuple(config['environment']['board_size']))
+    eval_env = BattleshipEnv(
+        board_size=tuple(config['environment']['board_size']),
+        verbose=args.env_verbose
+    )
     eval_env = ActionMasker(eval_env, mask_fn)
     eval_env = Monitor(eval_env, str(log_dir / "eval"))
 

@@ -24,7 +24,8 @@ class BattleshipEnv(gym.Env):
         render_mode: Optional[str] = None,
         ship_placement: Optional[Dict[str, list]] = None,
         allow_adjacent_ships: bool = True,
-        max_episode_length: Optional[int] = None
+        max_episode_length: Optional[int] = None,
+        verbose: bool = False
     ):
         """
         Initialize environment.
@@ -36,6 +37,7 @@ class BattleshipEnv(gym.Env):
             allow_adjacent_ships: If True, ships can touch (easier placement).
                                  If False, enforces no-touch constraint.
             max_episode_length: Maximum steps per episode. If None, defaults to 2 × total board cells.
+            verbose: If True, print debug messages for adjacency bonus and escalating penalty
         """
         super().__init__()
 
@@ -46,6 +48,7 @@ class BattleshipEnv(gym.Env):
         self.render_mode = render_mode
         self.manual_placement = ship_placement
         self.allow_adjacent_ships = allow_adjacent_ships
+        self.verbose = verbose
 
         # Calculate max episode length
         if max_episode_length is None:
@@ -100,6 +103,10 @@ class BattleshipEnv(gym.Env):
         # Create new game state
         self.state = self._create_initial_state()
 
+        # Track adjacency exploitation for debugging
+        self.adjacency_opportunities = 0  # Times agent COULD attack adjacent to a hit
+        self.adjacency_taken = 0          # Times agent DID attack adjacent to a hit
+
         obs = self.state.get_observation()
         info = self._get_info()
 
@@ -147,6 +154,13 @@ class BattleshipEnv(gym.Env):
                 {"error": f"Cell ({row}, {col}) already attacked", "result": "invalid"}
             )
 
+        # Track adjacency exploitation: check if agent COULD attack adjacent to a hit
+        adjacent_to_hits = self._get_valid_adjacent_cells()
+        if len(adjacent_to_hits) > 0:
+            self.adjacency_opportunities += 1
+            if action in adjacent_to_hits:
+                self.adjacency_taken += 1
+
         # Process attack
         reward, info = self._process_attack(row, col)
 
@@ -159,6 +173,15 @@ class BattleshipEnv(gym.Env):
         # Check truncation (episode length limit)
         truncated = self.state.move_count >= self.max_episode_length
 
+        # Add adjacency metrics to info if episode ended
+        if terminated or truncated:
+            info["adjacency_opportunities"] = self.adjacency_opportunities
+            info["adjacency_taken"] = self.adjacency_taken
+            info["adjacency_rate"] = (
+                self.adjacency_taken / max(1, self.adjacency_opportunities)
+                if self.adjacency_opportunities > 0 else 0.0
+            )
+
         return (
             self.state.get_observation(),
             reward,
@@ -166,6 +189,31 @@ class BattleshipEnv(gym.Env):
             truncated,
             info
         )
+
+    def _get_valid_adjacent_cells(self) -> list:
+        """
+        Get all valid (unattacked) cells adjacent to previous hits.
+
+        Returns:
+            List of flattened action indices for valid adjacent cells
+        """
+        valid_adjacent = []
+        rows, cols = self.board_size
+
+        # Find all cells with hits
+        for r in range(rows):
+            for c in range(cols):
+                if self.state.attack_board[r, c] == 2:  # Hit
+                    # Check 4-directional neighbors
+                    for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                        nr, nc = r + dr, c + dc
+                        if 0 <= nr < rows and 0 <= nc < cols:
+                            if self.state.attack_board[nr, nc] == 0:  # Unattacked
+                                action = nr * cols + nc  # Convert to flattened index
+                                if action not in valid_adjacent:
+                                    valid_adjacent.append(action)
+
+        return valid_adjacent
 
     def _calculate_adjacency_bonus(self, row: int, col: int) -> float:
         """
@@ -184,7 +232,9 @@ class BattleshipEnv(gym.Env):
             r, c = row + dr, col + dc
             if 0 <= r < self.board_size[0] and 0 <= c < self.board_size[1]:
                 if self.state.attack_board[r, c] == 2:  # Adjacent to previous hit
-                    return 100.0
+                    if self.verbose:
+                        print(f"🎯 ADJACENCY BONUS! Attack ({row},{col}) adjacent to hit at ({r},{c}) → +15.0")
+                    return 15.0
         return 0.0
 
     def _process_attack(self, row: int, col: int) -> Tuple[float, Dict]:
@@ -205,7 +255,9 @@ class BattleshipEnv(gym.Env):
         # Escalating penalty for taking too long (5x5 board: optimal ~10-15 moves)
         ESCALATION_THRESHOLD = 15
         if self.state.move_count > ESCALATION_THRESHOLD:
-            escalating_penalty = (self.state.move_count - ESCALATION_THRESHOLD) * -20.0
+            escalating_penalty = (self.state.move_count - ESCALATION_THRESHOLD) * -2.0
+            if self.verbose:
+                print(f"ESCALATING PENALTY! Move {self.state.move_count} > {ESCALATION_THRESHOLD} → {escalating_penalty:.1f}")
         else:
             escalating_penalty = 0.0
 

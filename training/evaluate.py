@@ -224,10 +224,15 @@ def main():
         action='store_true',
         help='Print detailed progress'
     )
+    parser.add_argument(
+        '--env-verbose',
+        action='store_true',
+        help='Show adjacency bonus and escalating penalty messages'
+    )
     args = parser.parse_args()
 
     # Create environment
-    env = BattleshipEnv(board_size=tuple(args.board_size))
+    env = BattleshipEnv(board_size=tuple(args.board_size), verbose=args.env_verbose)
 
     # Collect agents to evaluate
     agents = []

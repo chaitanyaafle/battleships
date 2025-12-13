@@ -42,6 +42,11 @@ def main():
         metavar=('ROWS', 'COLS'),
         help='Board size (default: 10 10)'
     )
+    parser.add_argument(
+        '--verbose',
+        action='store_true',
+        help='Show adjacency bonus and escalating penalty messages'
+    )
     args = parser.parse_args()
 
     # Check if model exists
@@ -70,7 +75,7 @@ def main():
         return
 
     # Create environment with rendering
-    env = BattleshipEnv(board_size=tuple(args.board_size), render_mode="ansi")
+    env = BattleshipEnv(board_size=tuple(args.board_size), render_mode="ansi", verbose=args.verbose)
 
     print(f"\nRunning {args.episodes} episode(s)...\n")
 
