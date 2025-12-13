@@ -8,14 +8,15 @@ from game.agents.base import BattleshipAgent
 class RandomAgent(BattleshipAgent):
     """Random agent that selects unattacked cells uniformly."""
 
-    def __init__(self, seed: int = None):
+    def __init__(self, name: str = "Random", seed: int = None):
         """
         Initialize random agent.
 
         Args:
+            name: Agent name (default: "Random")
             seed: Random seed for reproducibility
         """
-        super().__init__("Random")
+        super().__init__(name)
         self.rng = np.random.default_rng(seed)
 
     def select_action(self, observation: Dict[str, np.ndarray]) -> int:

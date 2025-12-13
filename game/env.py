@@ -22,7 +22,9 @@ class BattleshipEnv(gym.Env):
         self,
         board_size: Tuple[int, int] = (10, 10),
         render_mode: Optional[str] = None,
-        ship_placement: Optional[Dict[str, list]] = None
+        ship_placement: Optional[Dict[str, list]] = None,
+        allow_adjacent_ships: bool = True,
+        max_episode_length: Optional[int] = None
     ):
         """
         Initialize environment.
@@ -31,6 +33,9 @@ class BattleshipEnv(gym.Env):
             board_size: (rows, cols) tuple
             render_mode: One of ["human", "html", "ansi"]
             ship_placement: Optional manual ship placement (dict of ship_name -> coords)
+            allow_adjacent_ships: If True, ships can touch (easier placement).
+                                 If False, enforces no-touch constraint.
+            max_episode_length: Maximum steps per episode. If None, defaults to 2 × total board cells.
         """
         super().__init__()
 
@@ -40,6 +45,13 @@ class BattleshipEnv(gym.Env):
         self.board_size = board_size
         self.render_mode = render_mode
         self.manual_placement = ship_placement
+        self.allow_adjacent_ships = allow_adjacent_ships
+
+        # Calculate max episode length
+        if max_episode_length is None:
+            self.max_episode_length = 2 * board_size[0] * board_size[1]
+        else:
+            self.max_episode_length = max_episode_length
 
         rows, cols = board_size
 
@@ -144,11 +156,14 @@ class BattleshipEnv(gym.Env):
         # Check win condition
         terminated = self.state.done
 
+        # Check truncation (episode length limit)
+        truncated = self.state.move_count >= self.max_episode_length
+
         return (
             self.state.get_observation(),
             reward,
             terminated,
-            False,  # truncated
+            truncated,
             info
         )
 
@@ -236,7 +251,8 @@ class BattleshipEnv(gym.Env):
             ships, ship_board = place_ships(
                 self.board_size,
                 ship_config,
-                self.np_random  # Use seeded RNG
+                self.np_random,  # Use seeded RNG
+                allow_adjacent=self.allow_adjacent_ships
             )
 
         rows, cols = self.board_size
