@@ -217,18 +217,18 @@ def main():
     # Setup callbacks
     callbacks = []
 
-    # Evaluation callback
-    eval_callback = EvalCallback(
-        eval_env,
-        best_model_save_path=str(save_dir / "best_model"),
-        log_path=str(log_dir / "eval"),
-        eval_freq=config['training']['eval_freq'],
-        n_eval_episodes=config['training']['n_eval_episodes'],
-        deterministic=True,
-        render=False,
-        verbose=1
-    )
-    callbacks.append(eval_callback)
+    # # Evaluation callback
+    # eval_callback = EvalCallback(
+    #     eval_env,
+    #     best_model_save_path=str(save_dir / "best_model"),
+    #     log_path=str(log_dir / "eval"),
+    #     eval_freq=config['training']['eval_freq'],
+    #     n_eval_episodes=config['training']['n_eval_episodes'],
+    #     deterministic=True,
+    #     render=False,
+    #     verbose=1
+    # )
+    # callbacks.append(eval_callback)
 
     # Checkpoint callback
     checkpoint_callback = CheckpointCallback(
@@ -261,14 +261,14 @@ def main():
         model.save(final_model_path)
         print(f"\n✓ Training completed! Final model saved to {final_model_path}")
 
-        # Final evaluation
-        print("\nRunning final evaluation...")
-        results = evaluate_against_baselines(
-            model,
-            eval_env,
-            n_episodes=config['training']['n_eval_episodes'],
-            verbose=True
-        )
+        # # Final evaluation
+        # print("\nRunning final evaluation...")
+        # results = evaluate_against_baselines(
+        #     model,
+        #     eval_env,
+        #     n_episodes=config['training']['n_eval_episodes'],
+        #     verbose=True
+        # )
 
         # Log to W&B
         if use_wandb:
