@@ -6,6 +6,12 @@ import numpy as np
 from stable_baselines3 import PPO, DQN
 from stable_baselines3.common.base_class import BaseAlgorithm
 
+try:
+    from sb3_contrib import MaskablePPO
+    MASKABLE_PPO_AVAILABLE = True
+except ImportError:
+    MASKABLE_PPO_AVAILABLE = False
+
 from game.agents.base import BattleshipAgent
 
 
@@ -72,11 +78,24 @@ class RLAgent(BattleshipAgent):
 
         try:
             if 'ppo' in filename:
-                return PPO.load(model_path)
+                # Try MaskablePPO first if available (for models trained with action masking)
+                if MASKABLE_PPO_AVAILABLE:
+                    try:
+                        return MaskablePPO.load(model_path)
+                    except:
+                        # Fall back to standard PPO
+                        return PPO.load(model_path)
+                else:
+                    return PPO.load(model_path)
             elif 'dqn' in filename:
                 return DQN.load(model_path)
             else:
                 # Try PPO first (most common)
+                if MASKABLE_PPO_AVAILABLE:
+                    try:
+                        return MaskablePPO.load(model_path)
+                    except:
+                        pass
                 try:
                     return PPO.load(model_path)
                 except:
