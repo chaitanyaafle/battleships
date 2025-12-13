@@ -167,6 +167,26 @@ class BattleshipEnv(gym.Env):
             info
         )
 
+    def _calculate_adjacency_bonus(self, row: int, col: int) -> float:
+        """
+        Calculate bonus for attacking adjacent to previous hits.
+        Encourages target mode (following up on hits).
+
+        Args:
+            row: Row index
+            col: Column index
+
+        Returns:
+            Bonus reward if attack is adjacent to a hit
+        """
+        # Check 4-directional neighbors
+        for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+            r, c = row + dr, col + dc
+            if 0 <= r < self.board_size[0] and 0 <= c < self.board_size[1]:
+                if self.state.attack_board[r, c] == 2:  # Adjacent to previous hit
+                    return 2.0
+        return 0.0
+
     def _process_attack(self, row: int, col: int) -> Tuple[float, Dict]:
         """
         Process an attack at given coordinates.
@@ -179,14 +199,20 @@ class BattleshipEnv(gym.Env):
             reward: Reward for this attack
             info: Information dict with result and ship_sunk
         """
+        # Time penalty to encourage efficiency
+        TIME_PENALTY = -0.3
+
         cell_value = self.state.ship_board[row, col]
 
         if cell_value == 0:  # Miss
             self.state.attack_board[row, col] = 1
-            return -1.0, {"result": "miss", "ship_sunk": None}
+            return -1.0 + TIME_PENALTY, {"result": "miss", "ship_sunk": None}
 
         else:  # Hit
             self.state.attack_board[row, col] = 2
+
+            # Calculate adjacency bonus (encourages target mode)
+            adjacency_bonus = self._calculate_adjacency_bonus(row, col)
 
             # Find which ship was hit
             ship_sunk = None
@@ -201,14 +227,14 @@ class BattleshipEnv(gym.Env):
             all_sunk = all(s.is_sunk for s in self.state.ships.values())
             if all_sunk:
                 self.state.done = True
-                return 100.0, {"result": "win", "ship_sunk": ship_sunk}
+                return 50.0 + adjacency_bonus + TIME_PENALTY, {"result": "win", "ship_sunk": ship_sunk}
 
             # Ship sunk but game continues
             if ship_sunk:
-                return 10.0, {"result": "hit", "ship_sunk": ship_sunk}
+                return 10.0 + adjacency_bonus + TIME_PENALTY, {"result": "hit", "ship_sunk": ship_sunk}
 
             # Regular hit
-            return 5.0, {"result": "hit", "ship_sunk": None}
+            return 5.0 + adjacency_bonus + TIME_PENALTY, {"result": "hit", "ship_sunk": None}
 
     def render(self):
         """Render the environment based on render_mode."""
