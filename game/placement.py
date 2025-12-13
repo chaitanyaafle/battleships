@@ -8,17 +8,18 @@ from game.state import Ship
 def place_ships(
     board_size: Tuple[int, int],
     ship_config: Dict[str, int],
-    rng: np.random.Generator
+    rng: np.random.Generator,
+    allow_adjacent: bool = False
 ) -> Tuple[Dict[str, Ship], np.ndarray]:
     """
-    Randomly place ships on board with no-touch constraint.
-
-    Ships cannot touch each other, including diagonally.
+    Randomly place ships on board.
 
     Args:
         board_size: (rows, cols) tuple
         ship_config: Dictionary mapping ship names to sizes
         rng: Random number generator (for seeding)
+        allow_adjacent: If True, ships can touch (including diagonally).
+                       If False (default), enforces no-touch constraint.
 
     Returns:
         Tuple of:
@@ -54,13 +55,18 @@ def place_ships(
                 coords = [(row + i, col) for i in range(size)]
 
             # Check if placement is valid (no overlap or touching)
-            if _is_valid_placement(coords, occupied_cells, board_size):
+            if _is_valid_placement(coords, occupied_cells, board_size, allow_adjacent):
                 # Place ship
                 for r, c in coords:
                     ship_board[r, c] = ship_id
 
-                # Mark occupied cells (including buffer zone)
-                occupied_cells.update(_get_buffer_zone(coords, board_size))
+                # Mark occupied cells (including buffer zone if needed)
+                if allow_adjacent:
+                    # Only mark the ship's actual cells
+                    occupied_cells.update(coords)
+                else:
+                    # Mark ship cells + buffer zone for no-touch constraint
+                    occupied_cells.update(_get_buffer_zone(coords, board_size))
 
                 ships[ship_name] = Ship(
                     name=ship_name,
@@ -84,34 +90,46 @@ def place_ships(
 def _is_valid_placement(
     coords: List[Tuple[int, int]],
     occupied: Set[Tuple[int, int]],
-    board_size: Tuple[int, int]
+    board_size: Tuple[int, int],
+    allow_adjacent: bool = False
 ) -> bool:
     """
-    Check if ship placement is valid (no touching, within bounds).
+    Check if ship placement is valid (within bounds, no overlap).
 
     Args:
         coords: List of (row, col) coordinates for ship
-        occupied: Set of already occupied cells (includes buffer zones)
+        occupied: Set of already occupied cells (includes buffer zones if no-touch)
         board_size: (rows, cols) tuple
+        allow_adjacent: If True, only check for overlaps (not touching)
 
     Returns:
         True if placement is valid, False otherwise
     """
     rows, cols = board_size
 
-    # Check all coordinates and their neighbors
-    for r, c in coords:
-        # Check if in bounds
-        if not (0 <= r < rows and 0 <= c < cols):
-            return False
+    if allow_adjacent:
+        # Only check for direct overlaps (ships can touch)
+        for r, c in coords:
+            # Check if in bounds
+            if not (0 <= r < rows and 0 <= c < cols):
+                return False
+            # Check if cell is already occupied by another ship
+            if (r, c) in occupied:
+                return False
+    else:
+        # Check for overlaps and touching (no-touch constraint)
+        for r, c in coords:
+            # Check if in bounds
+            if not (0 <= r < rows and 0 <= c < cols):
+                return False
 
-        # Check 8 neighbors + self for any occupation
-        for dr in [-1, 0, 1]:
-            for dc in [-1, 0, 1]:
-                nr, nc = r + dr, c + dc
-                if 0 <= nr < rows and 0 <= nc < cols:
-                    if (nr, nc) in occupied:
-                        return False
+            # Check 8 neighbors + self for any occupation
+            for dr in [-1, 0, 1]:
+                for dc in [-1, 0, 1]:
+                    nr, nc = r + dr, c + dc
+                    if 0 <= nr < rows and 0 <= nc < cols:
+                        if (nr, nc) in occupied:
+                            return False
 
     return True
 
