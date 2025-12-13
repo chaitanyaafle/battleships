@@ -1,3 +1,12 @@
+---
+type: project
+status: active
+tags:
+  - ml
+  - research
+  - reinforcement-learning
+  - battleships
+---
 # Battleship Game Simulation
 
 A Python implementation of the classic Battleship game designed for AI agent training and comparison.
@@ -89,6 +98,56 @@ python demo_probability.py --mode multiple --num-games 20
 # Create interactive animated HTML demo
 python create_animated_demo.py --seed 42 --output game.html
 ```
+
+### Train RL Agents (PPO with Action Masking)
+
+```bash
+# Install RL dependencies (if not already installed)
+pip install stable-baselines3 sb3-contrib
+
+# Train PPO agent with action masking (50k timesteps)
+python training/train_ppo_masked.py --timesteps 50000
+
+# Continue training from checkpoint
+python training/train_ppo_masked.py \
+  --resume models/ppo_masked_XXXXXX/final_model.zip \
+  --timesteps 50000
+
+# Evaluate trained model
+python training/evaluate.py \
+  --models models/ppo_masked_XXXXXX/final_model.zip \
+  --n-episodes 100 \
+  --verbose
+
+# Compare multiple models + baselines
+python training/evaluate.py \
+  --models \
+    models/ppo_masked_20251212_232027/final_model.zip \
+    models/ppo_masked_20251031_161654/final_model.zip \
+  --baselines \
+  --n-episodes 100 \
+  --output results.csv
+
+# Evaluate all masked PPO models
+python training/evaluate.py \
+  --models models/ppo_masked_*/final_model.zip \
+  --baselines \
+  --n-episodes 100
+```
+
+**Performance Benchmarks** (10×10 board):
+- **Random Agent**: ~96 moves median
+- **Probability Agent (DataGenetics)**: ~49 moves median
+- **PPO with Action Masking (50k steps)**: ~92 moves, 100% win rate
+- **PPO with Action Masking (100k+ steps)**: ~60-70 moves (expected)
+
+**Why Action Masking?**
+- Standard PPO wastes training time on invalid moves
+- Action masking prevents selecting already-attacked cells
+- 4-10× faster convergence (50k vs 200k+ timesteps)
+- Guaranteed 0 invalid moves during play
+
+See [ACTION_MASKING_SOLUTION.md](ACTION_MASKING_SOLUTION.md) for details.
 
 ### Use in Code
 
@@ -205,15 +264,22 @@ battleships/
 │   ├── state.py                   # Game state and Ship classes
 │   ├── config.py                  # Ship configurations
 │   ├── placement.py               # Ship placement with no-touch
+│   ├── wrappers.py                # Gym wrappers (ActionMask, etc.)
 │   ├── agents/
 │   │   ├── base.py               # Abstract agent interface
 │   │   ├── random_agent.py       # Random baseline agent
-│   │   └── probability_agent.py  # DataGenetics optimal strategy
+│   │   ├── probability_agent.py  # DataGenetics optimal strategy
+│   │   └── rl_agent.py           # RL agent (PPO/DQN)
 │   └── renderers/
 │       ├── html.py               # HTML renderer
 │       ├── console.py            # Console renderer
 │       ├── probability_html.py   # Probability heatmap visualization
 │       └── animated_html.py      # Interactive game replay
+├── training/
+│   ├── train_ppo.py              # Train PPO (standard)
+│   ├── train_ppo_masked.py       # Train PPO with action masking
+│   ├── train_dqn.py              # Train DQN
+│   └── evaluate.py               # Evaluate and compare agents
 ├── legacy/
 │   ├── README.md                 # Legacy code documentation
 │   ├── core.py                   # Old two-player environment
@@ -233,6 +299,7 @@ battleships/
 ├── demo.py                       # Random agent demo
 ├── demo_probability.py           # Probability agent demo
 ├── create_animated_demo.py       # Generate interactive HTML
+├── ACTION_MASKING_SOLUTION.md    # Action masking guide
 ├── PROBABILITY_AGENT_README.md   # Probability agent guide
 ├── requirements.txt              # Dependencies
 ├── battleships.ipynb             # Interactive notebook (needs update)
@@ -281,11 +348,25 @@ python -c "from game.env import BattleshipEnv; env = BattleshipEnv(); print('Env
 
 See `PROBABILITY_AGENT_README.md` for detailed usage and examples.
 
+### 3. RL Agent (`game/agents/rl_agent.py`)
+- **Strategy**: Reinforcement learning (PPO/DQN) via Stable-Baselines3
+- **Performance**:
+  - With action masking (50k steps): ~92 moves, 100% win rate
+  - With action masking (100k+ steps): ~60-70 moves (expected)
+- **Features**:
+  - Supports both PPO and DQN algorithms
+  - MaskablePPO support for action masking
+  - Automatic algorithm detection from filename
+  - Deterministic evaluation mode
+- **Training**: See `training/train_ppo_masked.py`
+- **Evaluation**: See `training/evaluate.py`
+
+See `ACTION_MASKING_SOLUTION.md` for training guide and performance details.
+
 ### Future Agent Types (Planned)
 
-1. **RL Agent**: PPO/DQN trained via Stable-Baselines3
-2. **LLM Agent**: Claude/GPT with chain-of-thought reasoning
-3. **Hybrid Agent**: RL + LLM combination
+1. **LLM Agent**: Claude/GPT with chain-of-thought reasoning
+2. **Hybrid Agent**: RL + LLM combination
 
 ## Development
 
