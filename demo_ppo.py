@@ -34,6 +34,14 @@ def main():
         default=None,
         help='Random seed for reproducibility'
     )
+    parser.add_argument(
+        '--board-size',
+        type=int,
+        nargs=2,
+        default=[10, 10],
+        metavar=('ROWS', 'COLS'),
+        help='Board size (default: 10 10)'
+    )
     args = parser.parse_args()
 
     # Check if model exists
@@ -62,7 +70,7 @@ def main():
         return
 
     # Create environment with rendering
-    env = BattleshipEnv(board_size=(10, 10), render_mode="ansi")
+    env = BattleshipEnv(board_size=tuple(args.board_size), render_mode="ansi")
 
     print(f"\nRunning {args.episodes} episode(s)...\n")
 
@@ -92,7 +100,7 @@ def main():
         while not done:
             # Agent selects action
             action = agent.select_action(obs)
-            row, col = divmod(action, 10)
+            row, col = divmod(action, args.board_size[1])
 
             # Track if this is a repeated move
             if action in move_history:

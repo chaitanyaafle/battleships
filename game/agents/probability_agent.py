@@ -21,15 +21,16 @@ from game.agents.base import BattleshipAgent
 class ProbabilityAgent(BattleshipAgent):
     """Agent that uses probability density to make optimal moves."""
 
-    def __init__(self, hit_adjacency_weight: float = 50.0):
+    def __init__(self, name: str = "Probability", hit_adjacency_weight: float = 50.0):
         """
         Initialize probability-based agent.
 
         Args:
+            name: Human-readable name for the agent
             hit_adjacency_weight: Multiplier for cells adjacent to hits (default 50x).
                                 DataGenetics recommends 10-100x weighting.
         """
-        super().__init__("Probability")
+        super().__init__(name)
         self.hit_adjacency_weight = hit_adjacency_weight
         self.probability_grid = None  # Store last calculated probabilities for visualization
         self.last_action = None
