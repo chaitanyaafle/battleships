@@ -66,6 +66,7 @@ def main():
     parser.add_argument('--no-wandb', action='store_true')
     parser.add_argument('--timesteps', type=int, default=None)
     parser.add_argument('--name', type=str, default=None)
+    parser.add_argument('--resume', type=str, default=None, help='Path to model to resume training from')
     args = parser.parse_args()
 
     # Load configuration
@@ -148,23 +149,33 @@ def main():
         device = "cpu"
         print("⚠️  Using CPU (no GPU acceleration)")
 
-    # Create Maskable PPO agent
-    print(f"\nInitializing MaskablePPO agent with config:")
-    print(f"  Device: {device}")
-    print(f"  Learning rate: {ppo_config['learning_rate']}")
-    print(f"  Batch size: {ppo_config['batch_size']}")
-    print(f"  Network architecture: {policy_kwargs.get('net_arch', 'default')}")
-    print(f"  ✨ Action masking: ENABLED")
+    # Create or load Maskable PPO agent
+    if args.resume:
+        print(f"\n📂 Loading model from {args.resume}")
+        model = MaskablePPO.load(
+            args.resume,
+            env=env,
+            device=device,
+            tensorboard_log=str(log_dir) if config['logging']['use_tensorboard'] else None,
+        )
+        print("✓ Model loaded! Continuing training...")
+    else:
+        print(f"\nInitializing MaskablePPO agent with config:")
+        print(f"  Device: {device}")
+        print(f"  Learning rate: {ppo_config['learning_rate']}")
+        print(f"  Batch size: {ppo_config['batch_size']}")
+        print(f"  Network architecture: {policy_kwargs.get('net_arch', 'default')}")
+        print(f"  ✨ Action masking: ENABLED")
 
-    model = MaskablePPO(
-        ppo_config['policy'],
-        env,
-        verbose=config['training']['verbose'],
-        tensorboard_log=str(log_dir) if config['logging']['use_tensorboard'] else None,
-        policy_kwargs=policy_kwargs,
-        device=device,
-        **{k: v for k, v in ppo_config.items() if k != 'policy'}
-    )
+        model = MaskablePPO(
+            ppo_config['policy'],
+            env,
+            verbose=config['training']['verbose'],
+            tensorboard_log=str(log_dir) if config['logging']['use_tensorboard'] else None,
+            policy_kwargs=policy_kwargs,
+            device=device,
+            **{k: v for k, v in ppo_config.items() if k != 'policy'}
+        )
 
     # Setup callbacks
     callbacks = []
