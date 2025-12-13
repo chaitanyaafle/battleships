@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import Dict, Optional, Union
 import numpy as np
-from stable_baselines3 import PPO, DQN
+from stable_baselines3 import PPO, DQN, A2C
 from stable_baselines3.common.base_class import BaseAlgorithm
 
 try:
@@ -19,7 +19,7 @@ class RLAgent(BattleshipAgent):
     """
     Wrapper for Stable-Baselines3 RL agents.
 
-    Supports PPO, DQN, and other SB3 algorithms.
+    Supports PPO, DQN, A2C, and other SB3 algorithms.
     """
 
     def __init__(
@@ -89,6 +89,8 @@ class RLAgent(BattleshipAgent):
                     return PPO.load(model_path)
             elif 'dqn' in filename:
                 return DQN.load(model_path)
+            elif 'a2c' in filename:
+                return A2C.load(model_path)
             else:
                 # Try PPO first (most common)
                 if MASKABLE_PPO_AVAILABLE:
@@ -99,7 +101,10 @@ class RLAgent(BattleshipAgent):
                 try:
                     return PPO.load(model_path)
                 except:
-                    return DQN.load(model_path)
+                    try:
+                        return A2C.load(model_path)
+                    except:
+                        return DQN.load(model_path)
         except Exception as e:
             raise ValueError(f"Failed to load model from {model_path}: {e}")
 
