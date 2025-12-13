@@ -15,14 +15,14 @@ training:
 
 # PPO-specific hyperparameters
 ppo:
-  learning_rate: 0.0003  # 3e-4 is standard for PPO
-  n_steps: 256  # Number of steps per update (increased for faster training)
-  batch_size: 128  # Minibatch size for updates (increased for efficiency)
+  learning_rate: 0.0005  # 3e-4 is standard for PPO
+  n_steps: 512  # Number of steps per update (increased for faster training)
+  batch_size: 128  # Smaller batches = less dilution of rare good episodes, more gradient updates
   n_epochs: 4  # Number of epochs for policy update (reduced for faster training)
-  gamma: 0.99  # Discount factor
+  gamma: 0.95  # Discount factor
   gae_lambda: 0.95  # GAE lambda for advantage estimation
   clip_range: 0.2  # PPO clipping parameter
-  ent_coef: 0.04  # Entropy coefficient (encourage exploration)
+  ent_coef: 0.8  # EXTREME exploration - force agent to discover adjacency bonus
   vf_coef: 0.5  # Value function coefficient
   max_grad_norm: 0.5  # Gradient clipping
   policy: "MultiInputPolicy"  # Policy type for Dict observation space
@@ -30,9 +30,10 @@ ppo:
   # Network architecture
   policy_kwargs:
     net_arch:
-      - 256  # Hidden layer 1
-      - 256  # Hidden layer 2
-      - 128  # Hidden layer 3
+      - 512  # Hidden layer 1
+      - 512  # Hidden layer 2
+      - 256  # Hidden layer 3
+      - 128  # Hidden layer 4
     activation_fn: "relu"  # or "tanh"
 
 # DQN-specific hyperparameters
@@ -75,10 +76,10 @@ rewards:
   miss: -1.3  # Small penalty for misses + time penalty
   hit: 4.7  # Reward for hitting a ship + time penalty (+ adjacency bonus if applicable)
   sink: 9.7  # Bonus for sinking a ship + time penalty (+ adjacency bonus if applicable)
-  win: 49.7  # Reward for winning (reduced from 100) + time penalty (+ adjacency bonus if applicable)
+  win: 19.7  # Reward for winning (reduced to emphasize efficiency) + time penalty (+ adjacency bonus if applicable)
   invalid: -50  # Penalty for invalid moves (attacking same cell)
   time_penalty: -0.3  # Per-move penalty to encourage efficiency
-  adjacency_bonus: 2.0  # Bonus for attacking adjacent to previous hits (teaches target mode)
+  adjacency_bonus: 15.0  # Bonus for attacking adjacent to previous hits (teaches target mode)
 
 # Evaluation
 evaluation:

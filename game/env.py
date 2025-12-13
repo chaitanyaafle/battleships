@@ -184,7 +184,7 @@ class BattleshipEnv(gym.Env):
             r, c = row + dr, col + dc
             if 0 <= r < self.board_size[0] and 0 <= c < self.board_size[1]:
                 if self.state.attack_board[r, c] == 2:  # Adjacent to previous hit
-                    return 2.0
+                    return 15.0
         return 0.0
 
     def _process_attack(self, row: int, col: int) -> Tuple[float, Dict]:
@@ -227,7 +227,7 @@ class BattleshipEnv(gym.Env):
             all_sunk = all(s.is_sunk for s in self.state.ships.values())
             if all_sunk:
                 self.state.done = True
-                return 50.0 + adjacency_bonus + TIME_PENALTY, {"result": "win", "ship_sunk": ship_sunk}
+                return 20.0 + adjacency_bonus + TIME_PENALTY, {"result": "win", "ship_sunk": ship_sunk}
 
             # Ship sunk but game continues
             if ship_sunk:
