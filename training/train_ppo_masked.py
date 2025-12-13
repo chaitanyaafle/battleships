@@ -27,7 +27,7 @@ except ImportError:
     exit(1)
 
 import wandb
-from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
+from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList, BaseCallback
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.monitor import Monitor
 
@@ -57,6 +57,46 @@ def load_config(config_path: str = "configs/default.yaml") -> dict:
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
     return config
+
+
+class EpisodeStatsCallback(BaseCallback):
+    """
+    Custom callback to log additional episode statistics to wandb.
+    Logs min, max, and std of episode lengths and rewards.
+    """
+    def __init__(self, verbose=0):
+        super().__init__(verbose)
+        self.episode_lengths = []
+        self.episode_rewards = []
+
+    def _on_step(self) -> bool:
+        # Check if episode ended
+        if self.locals.get("dones") is not None:
+            done = self.locals["dones"][0] if isinstance(self.locals["dones"], np.ndarray) else self.locals["dones"]
+
+            if done:
+                # Get episode info from Monitor wrapper
+                info = self.locals.get("infos", [{}])[0]
+
+                if "episode" in info:
+                    ep_len = info["episode"]["l"]
+                    ep_rew = info["episode"]["r"]
+
+                    self.episode_lengths.append(ep_len)
+                    self.episode_rewards.append(ep_rew)
+
+                    # Log to wandb every episode
+                    if len(self.episode_lengths) >= 1:
+                        wandb.log({
+                            "rollout/ep_len_min": min(self.episode_lengths[-100:]),  # Min over last 100 episodes
+                            "rollout/ep_len_max": max(self.episode_lengths[-100:]),
+                            "rollout/ep_len_std": np.std(self.episode_lengths[-100:]),
+                            "rollout/ep_rew_min": min(self.episode_rewards[-100:]),
+                            "rollout/ep_rew_max": max(self.episode_rewards[-100:]),
+                            "rollout/ep_rew_std": np.std(self.episode_rewards[-100:]),
+                        }, step=self.num_timesteps)
+
+        return True
 
 
 def main():
@@ -189,6 +229,11 @@ def main():
         save_vecnormalize=False,
     )
     callbacks.append(checkpoint_callback)
+
+    # Episode stats callback (logs min/max/std to wandb)
+    if use_wandb:
+        episode_stats_callback = EpisodeStatsCallback(verbose=0)
+        callbacks.append(episode_stats_callback)
 
     callback_list = CallbackList(callbacks)
 
