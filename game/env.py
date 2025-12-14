@@ -156,13 +156,20 @@ class BattleshipEnv(gym.Env):
 
         # Track adjacency exploitation: check if agent COULD attack adjacent to a hit
         adjacent_to_hits = self._get_valid_adjacent_cells()
+        missed_adjacency_penalty = 0.0
         if len(adjacent_to_hits) > 0:
             self.adjacency_opportunities += 1
             if action in adjacent_to_hits:
                 self.adjacency_taken += 1
+            else:
+                # Penalty for ignoring adjacency when opportunities exist
+                missed_adjacency_penalty = -10.0
+                if self.verbose:
+                    print(f"❌ MISSED ADJACENCY PENALTY! Ignored {len(adjacent_to_hits)} adjacent cells → -10.0")
 
         # Process attack
         reward, info = self._process_attack(row, col)
+        reward += missed_adjacency_penalty
 
         # Update move count
         self.state.move_count += 1
@@ -190,9 +197,24 @@ class BattleshipEnv(gym.Env):
             info
         )
 
+    def _get_unsunk_hit_coords(self) -> set:
+        """
+        Get coordinates of hits belonging to unsunk ships only.
+
+        Returns:
+            Set of (row, col) tuples for hits on unsunk ships
+        """
+        unsunk_hits = set()
+        for ship in self.state.ships.values():
+            if not ship.is_sunk:
+                for coord in ship.coords:
+                    if self.state.attack_board[coord[0], coord[1]] == 2:
+                        unsunk_hits.add(coord)
+        return unsunk_hits
+
     def _get_valid_adjacent_cells(self) -> list:
         """
-        Get all valid (unattacked) cells adjacent to previous hits.
+        Get all valid (unattacked) cells adjacent to UNSUNK hits only.
 
         Returns:
             List of flattened action indices for valid adjacent cells
@@ -200,24 +222,24 @@ class BattleshipEnv(gym.Env):
         valid_adjacent = []
         rows, cols = self.board_size
 
-        # Find all cells with hits
-        for r in range(rows):
-            for c in range(cols):
-                if self.state.attack_board[r, c] == 2:  # Hit
-                    # Check 4-directional neighbors
-                    for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-                        nr, nc = r + dr, c + dc
-                        if 0 <= nr < rows and 0 <= nc < cols:
-                            if self.state.attack_board[nr, nc] == 0:  # Unattacked
-                                action = nr * cols + nc  # Convert to flattened index
-                                if action not in valid_adjacent:
-                                    valid_adjacent.append(action)
+        # Only consider hits on unsunk ships
+        unsunk_hits = self._get_unsunk_hit_coords()
+
+        for r, c in unsunk_hits:
+            # Check 4-directional neighbors
+            for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < rows and 0 <= nc < cols:
+                    if self.state.attack_board[nr, nc] == 0:  # Unattacked
+                        action = nr * cols + nc  # Convert to flattened index
+                        if action not in valid_adjacent:
+                            valid_adjacent.append(action)
 
         return valid_adjacent
 
     def _calculate_adjacency_bonus(self, row: int, col: int) -> float:
         """
-        Calculate bonus for attacking adjacent to previous hits.
+        Calculate bonus for attacking adjacent to UNSUNK hits only.
         Encourages target mode (following up on hits).
 
         Args:
@@ -225,16 +247,18 @@ class BattleshipEnv(gym.Env):
             col: Column index
 
         Returns:
-            Bonus reward if attack is adjacent to a hit
+            Bonus reward if attack is adjacent to an unsunk hit
         """
+        # Only consider hits on unsunk ships
+        unsunk_hits = self._get_unsunk_hit_coords()
+
         # Check 4-directional neighbors
         for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
             r, c = row + dr, col + dc
-            if 0 <= r < self.board_size[0] and 0 <= c < self.board_size[1]:
-                if self.state.attack_board[r, c] == 2:  # Adjacent to previous hit
-                    if self.verbose:
-                        print(f"🎯 ADJACENCY BONUS! Attack ({row},{col}) adjacent to hit at ({r},{c}) → +15.0")
-                    return 15.0
+            if (r, c) in unsunk_hits:
+                if self.verbose:
+                    print(f"🎯 ADJACENCY BONUS! Attack ({row},{col}) adjacent to unsunk hit at ({r},{c}) → +15.0")
+                return 15.0
         return 0.0
 
     def _process_attack(self, row: int, col: int) -> Tuple[float, Dict]:
