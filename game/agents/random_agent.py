@@ -19,12 +19,13 @@ class RandomAgent(BattleshipAgent):
         super().__init__(name)
         self.rng = np.random.default_rng(seed)
 
-    def select_action(self, observation: Dict[str, np.ndarray]) -> int:
+    def select_action(self, observation: Dict[str, np.ndarray], env=None) -> int:
         """
         Select random unattacked cell.
 
         Args:
             observation: Current observation from environment
+            env: Unused, kept for API compatibility
 
         Returns:
             Random valid action (flattened board index)

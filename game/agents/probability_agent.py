@@ -39,12 +39,13 @@ class ProbabilityAgent(BattleshipAgent):
         self.hit_coords = set()  # Track all hits we've made
         self.previous_remaining_ships = None  # Track when ships get sunk
 
-    def select_action(self, observation: Dict[str, np.ndarray]) -> int:
+    def select_action(self, observation: Dict[str, np.ndarray], env=None) -> int:
         """
         Select action with highest probability of containing a ship.
 
         Args:
             observation: Current observation from environment
+            env: Unused, kept for API compatibility
 
         Returns:
             Action with highest probability (flattened board index)

@@ -18,7 +18,7 @@ class BattleshipAgent(ABC):
         self.name = name
 
     @abstractmethod
-    def select_action(self, observation: Dict[str, np.ndarray]) -> int:
+    def select_action(self, observation: Dict[str, np.ndarray], env=None) -> int:
         """
         Select action given current observation.
 
@@ -30,6 +30,7 @@ class BattleshipAgent(ABC):
                     2 = hit
                 - 'remaining_ships': (5,) array of unsunk ship sizes
                 - 'move_count': (1,) array with current move count
+            env: Optional environment for forced target mode masking (used by RL agents)
 
         Returns:
             action: Flattened board index (0 to rows*cols-1)
