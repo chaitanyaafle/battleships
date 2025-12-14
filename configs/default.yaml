@@ -15,15 +15,15 @@ training:
 
 # PPO-specific hyperparameters
 ppo:
-  learning_rate: 0.0005  # 3e-4 is standard for PPO
-  n_steps: 512  # Number of steps per update (increased for faster training)
-  batch_size: 64  # Smaller batches = less dilution of rare good episodes, more gradient updates
+  learning_rate: 0.0003  # 3e-4 is standard for PPO
+  n_steps: 2048  # Number of steps per update (increased for faster training)
+  batch_size: 128  # Smaller batches = less dilution of rare good episodes, more gradient updates
   n_epochs: 10  # Number of epochs for policy update (reduced for faster training)
-  gamma: 0.99  # Discount factor
-  gae_lambda: 0.98  # GAE lambda for advantage estimation
+  gamma: 0.95  # Discount factor
+  gae_lambda: 0.95  # GAE lambda for advantage estimation
   clip_range: 0.2  # PPO clipping parameter
-  ent_coef: 0.01  # Reduced exploration - agent has learned basics, now exploit
-  vf_coef: 0.5  # Value function coefficient
+  ent_coef: 0.005  # Reduced exploration - agent has learned basics, now exploit
+  vf_coef: 1.0  # Value function coefficient
   max_grad_norm: 1.0  # Gradient clipping
   policy: "MultiInputPolicy"  # Policy type for Dict observation space
 
@@ -36,7 +36,7 @@ ppo:
       # - 512  # Hidden layer 4
       # - 256  # Hidden layer 5
       # - 128  # Hidden layer 6
-    activation_fn: "tanh"  # or " relu"
+    activation_fn: "relu"  # or " tanh"
 
 # DQN-specific hyperparameters
 dqn:
@@ -83,8 +83,8 @@ rewards:
   invalid: -50.0  # Penalty for invalid moves (attacking same cell)
 
   # Bonuses and penalties
-  adjacency_bonus: 15.0  # Bonus for attacking adjacent to UNSUNK hits only (teaches target mode)
-  missed_adjacency_penalty: -10.0  # Penalty for ignoring adjacency when opportunities exist
+  adjacency_bonus: 25.0  # Bonus for attacking adjacent to UNSUNK hits only (teaches target mode)
+  missed_adjacency_penalty: -15.0  # Penalty for ignoring adjacency when opportunities exist
   time_penalty: -0.3  # Per-move penalty to encourage efficiency (applied to ALL moves)
 
   # Escalating penalty (for 5x5 board)
