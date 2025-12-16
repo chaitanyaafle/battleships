@@ -38,9 +38,8 @@ def mask_fn(env) -> np.ndarray:
     """
     Generate action mask for the current environment state.
 
-    FORCED TARGET MODE: When adjacent cells to unsunk hits exist,
-    ONLY those cells are valid actions. This removes the need to
-    learn target mode behavior - it's enforced by the mask.
+    Only prevents invalid actions (attacking already-attacked cells).
+    The agent must LEARN target mode behavior through rewards.
 
     Args:
         env: Battleship environment
@@ -51,17 +50,7 @@ def mask_fn(env) -> np.ndarray:
     if env.state is None:
         return np.ones(env.action_space.n, dtype=bool)
 
-    # Check for adjacent cells to unsunk hits (target mode)
-    adjacent_cells = env._get_valid_adjacent_cells()
-
-    if adjacent_cells:
-        # FORCE target mode: only allow adjacent cells
-        mask = np.zeros(env.action_space.n, dtype=bool)
-        for action in adjacent_cells:
-            mask[action] = True
-        return mask
-
-    # Hunt mode: allow all unattacked cells
+    # Only mask out already-attacked cells
     attack_board = env.state.attack_board
     return (attack_board == 0).flatten()
 
