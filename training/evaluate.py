@@ -59,8 +59,8 @@ def evaluate_agent(
         while not done:
             if episode_length == 0:
                 print(f"[DEBUG] About to select first action...", flush=True)
-            # Pass env for forced target mode masking (used by RL agents)
-            action = agent.select_action(obs, env=env)
+            # No forced masking - evaluate agent's true learned behavior
+            action = agent.select_action(obs)
             if episode_length == 0:
                 print(f"[DEBUG] First action selected: {action}", flush=True)
             obs, reward, terminated, truncated, info = env.step(action)

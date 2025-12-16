@@ -114,30 +114,16 @@ class RLAgent(BattleshipAgent):
 
         Args:
             observation: Current game observation
-            env: Optional environment for forced target mode masking
+            env: Unused, kept for API compatibility
 
         Returns:
             action: Flattened board index
         """
         # Check if we need to provide action mask (for MaskablePPO)
         if MASKABLE_PPO_AVAILABLE and isinstance(self.model, MaskablePPO):
-            # Generate action mask
+            # Generate action mask: only prevent attacking already-attacked cells
             attack_board = observation['attack_board']
-
-            # FORCED TARGET MODE: If env is provided, check for adjacency
-            if env is not None and hasattr(env, '_get_valid_adjacent_cells'):
-                adjacent_cells = env._get_valid_adjacent_cells()
-                if adjacent_cells:
-                    # Force target mode: only allow adjacent cells
-                    action_masks = np.zeros(env.action_space.n, dtype=bool)
-                    for action in adjacent_cells:
-                        action_masks[action] = True
-                else:
-                    # Hunt mode: allow all unattacked cells
-                    action_masks = (attack_board == 0).flatten()
-            else:
-                # Fallback: allow all unattacked cells
-                action_masks = (attack_board == 0).flatten()
+            action_masks = (attack_board == 0).flatten()
 
             action, _states = self.model.predict(
                 observation,
