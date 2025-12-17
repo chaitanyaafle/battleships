@@ -3,30 +3,41 @@
 from typing import Dict, Tuple
 
 
-def get_ship_config(board_size: Tuple[int, int]) -> Dict[str, int]:
+def get_ship_config(board_size: Tuple[int, int], custom_ships: Dict[str, int] = None) -> Dict[str, int]:
     """
     Get ship configuration based on board size.
 
     Ship configurations are adaptive:
+    - 3x3: Single destroyer(2) - for curriculum learning
+    - 4x4: Single destroyer(2) - for curriculum learning
     - 5x5 to 7x7: Destroyer(2), Cruiser(3)
     - 8x8 to 9x9: + Submarine(3)
     - 10x10+:     + Battleship(4), Carrier(5)
 
     Args:
         board_size: (rows, cols) tuple
+        custom_ships: Optional custom ship configuration (overrides defaults)
 
     Returns:
         Dictionary mapping ship names to sizes
-
-    Raises:
-        ValueError: If board size is too small (< 5x5)
     """
+    # Allow custom ship config for curriculum learning
+    if custom_ships is not None:
+        return custom_ships
+
     rows, cols = board_size
     min_dim = min(rows, cols)
 
+    # Support small boards for curriculum learning
+    if min_dim == 3:
+        return {"destroyer": 2}
+
+    if min_dim == 4:
+        return {"destroyer": 2}
+
     if min_dim < 5:
         raise ValueError(
-            f"Board size must be at least 5x5. Got {rows}x{cols} "
+            f"Board size must be at least 3x3. Got {rows}x{cols} "
             f"(min dimension: {min_dim})"
         )
 
@@ -51,20 +62,21 @@ def get_ship_config(board_size: Tuple[int, int]) -> Dict[str, int]:
         }
 
 
-def validate_board_size(board_size: Tuple[int, int]) -> None:
+def validate_board_size(board_size: Tuple[int, int], min_size: int = 3) -> None:
     """
     Validate that board size is reasonable.
 
     Args:
         board_size: (rows, cols) tuple
+        min_size: Minimum dimension (default 3 for curriculum learning)
 
     Raises:
         ValueError: If board size is invalid
     """
     rows, cols = board_size
 
-    if rows < 5 or cols < 5:
-        raise ValueError(f"Board dimensions must be at least 5. Got {rows}x{cols}")
+    if rows < min_size or cols < min_size:
+        raise ValueError(f"Board dimensions must be at least {min_size}. Got {rows}x{cols}")
 
     if rows > 20 or cols > 20:
         raise ValueError(
