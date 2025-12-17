@@ -2,7 +2,7 @@
 
 # Environment settings
 environment:
-  board_size: [5, 5]  # (rows, cols)
+  board_size: [3, 3]  # (rows, cols)
   render_mode: null  # Set to "human" or "ansi" for debugging
 
 # Training settings
