@@ -72,6 +72,7 @@ class EpisodeStatsCallback(BaseCallback):
         self.episode_lengths = []
         self.episode_rewards = []
         self.adjacency_rates = []  # Track how often agent exploits adjacency opportunities
+        self.miss_adjacent_rates = []  # Track inefficient miss-adjacency behavior
 
     def _on_step(self) -> bool:
         # Check if episode ended
@@ -93,6 +94,10 @@ class EpisodeStatsCallback(BaseCallback):
                     if "adjacency_rate" in info:
                         self.adjacency_rates.append(info["adjacency_rate"])
 
+                    # Track miss-adjacency rate (inefficient behavior)
+                    if "miss_adjacent_rate" in info:
+                        self.miss_adjacent_rates.append(info["miss_adjacent_rate"])
+
                     # Log to wandb every episode
                     if len(self.episode_lengths) >= 1:
                         log_dict = {
@@ -109,6 +114,12 @@ class EpisodeStatsCallback(BaseCallback):
                             log_dict["rollout/adjacency_rate_mean"] = np.mean(self.adjacency_rates[-100:])
                             log_dict["rollout/adjacency_rate_min"] = min(self.adjacency_rates[-100:])
                             log_dict["rollout/adjacency_rate_max"] = max(self.adjacency_rates[-100:])
+
+                        # Add miss-adjacency metrics if available (inefficient behavior)
+                        if len(self.miss_adjacent_rates) > 0:
+                            log_dict["rollout/miss_adjacent_rate_mean"] = np.mean(self.miss_adjacent_rates[-100:])
+                            log_dict["rollout/miss_adjacent_rate_min"] = min(self.miss_adjacent_rates[-100:])
+                            log_dict["rollout/miss_adjacent_rate_max"] = max(self.miss_adjacent_rates[-100:])
 
                         wandb.log(log_dict, step=self.num_timesteps)
 

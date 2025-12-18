@@ -145,6 +145,10 @@ class BattleshipEnv(gym.Env):
         self.adjacency_opportunities = 0  # Times agent COULD attack adjacent to a hit
         self.adjacency_taken = 0          # Times agent DID attack adjacent to a hit
 
+        # Track miss-adjacency (inefficient behavior)
+        self.miss_adjacent_opportunities = 0  # Times agent COULD avoid shooting adjacent to misses
+        self.miss_adjacent_taken = 0          # Times agent DID shoot adjacent to misses
+
         obs = self.state.get_observation()
         info = self._get_info()
 
@@ -205,6 +209,14 @@ class BattleshipEnv(gym.Env):
                 if self.verbose and missed_adjacency_penalty != 0:
                     print(f"❌ MISSED ADJACENCY PENALTY! Ignored {len(adjacent_to_hits)} adjacent cells → {missed_adjacency_penalty}")
 
+        # Track miss-adjacency (inefficient parity behavior)
+        # Count opportunities when misses exist, track if agent chooses adjacent cell
+        miss_coords = self._get_miss_coords()
+        if len(miss_coords) > 0:  # If there are any misses on the board
+            self.miss_adjacent_opportunities += 1
+            if self._is_adjacent_to_miss(row, col):
+                self.miss_adjacent_taken += 1
+
         # Process attack
         reward, info = self._process_attack(row, col)
         reward += missed_adjacency_penalty
@@ -225,6 +237,12 @@ class BattleshipEnv(gym.Env):
             info["adjacency_rate"] = (
                 self.adjacency_taken / max(1, self.adjacency_opportunities)
                 if self.adjacency_opportunities > 0 else 0.0
+            )
+            info["miss_adjacent_opportunities"] = self.miss_adjacent_opportunities
+            info["miss_adjacent_taken"] = self.miss_adjacent_taken
+            info["miss_adjacent_rate"] = (
+                self.miss_adjacent_taken / max(1, self.miss_adjacent_opportunities)
+                if self.miss_adjacent_opportunities > 0 else 0.0
             )
 
         return (
@@ -274,6 +292,41 @@ class BattleshipEnv(gym.Env):
                             valid_adjacent.append(action)
 
         return valid_adjacent
+
+    def _get_miss_coords(self) -> set:
+        """
+        Get coordinates of all misses (cells marked as 1 on attack_board).
+
+        Returns:
+            Set of (row, col) tuples for miss positions
+        """
+        misses = set()
+        rows, cols = self.board_size
+        for r in range(rows):
+            for c in range(cols):
+                if self.state.attack_board[r, c] == 1:  # Miss
+                    misses.add((r, c))
+        return misses
+
+    def _is_adjacent_to_miss(self, row: int, col: int) -> bool:
+        """
+        Check if a cell is adjacent to any previous miss.
+
+        Args:
+            row: Row index
+            col: Column index
+
+        Returns:
+            True if cell is adjacent to a miss
+        """
+        miss_coords = self._get_miss_coords()
+
+        # Check 4-directional neighbors
+        for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+            r, c = row + dr, col + dc
+            if (r, c) in miss_coords:
+                return True
+        return False
 
     def _calculate_adjacency_bonus(self, row: int, col: int) -> float:
         """
