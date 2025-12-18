@@ -165,7 +165,7 @@ def print_comparison_table(df: pd.DataFrame):
     has_miss_adj = 'miss_adjacent_rate' in df.columns
 
     # Calculate table width based on columns
-    table_width = 110 if has_board_size else 102
+    table_width = 120 if has_board_size else 102
     if has_adjacency:
         table_width += 10
     if has_miss_adj:
@@ -179,7 +179,7 @@ def print_comparison_table(df: pd.DataFrame):
 
     # Build header
     header_parts = []
-    header_parts.append(f"{'Agent':<30}")
+    header_parts.append(f"{'Agent':<40}")
     if has_board_size:
         header_parts.append(f"{'Board':^8}")
     header_parts.append(f"{'Mean':>8}")
@@ -199,7 +199,7 @@ def print_comparison_table(df: pd.DataFrame):
     # Print rows
     for _, row in df.iterrows():
         row_parts = []
-        row_parts.append(f"{row['agent_name']:<30}")
+        row_parts.append(f"{row['agent_name']:<40}")
         if has_board_size:
             row_parts.append(f"{row['board_size']:^8}")
         row_parts.append(f"{row['mean_length']:>8.1f}")
