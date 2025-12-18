@@ -159,67 +159,88 @@ def print_comparison_table(df: pd.DataFrame):
     Args:
         df: DataFrame with agent comparison results
     """
-    print("\n" + "="*80)
-    print("AGENT COMPARISON")
-    print("="*80)
-
     # Check if board_size and adjacency metrics exist
     has_board_size = 'board_size' in df.columns
     has_adjacency = 'adjacency_rate' in df.columns
     has_miss_adj = 'miss_adjacent_rate' in df.columns
 
-    # Build header based on available columns
-    header = f"{'Agent':<25} "
-    if has_board_size:
-        header += f"{'Board':<8} "
-    header += f"{'Mean':<10} {'Median':<10} {'Std':<10} {'Min':<8} {'Max':<8} {'Win %':<8}"
+    # Calculate table width based on columns
+    table_width = 110 if has_board_size else 102
     if has_adjacency:
-        header += f" {'Adj%':<8}"
+        table_width += 10
     if has_miss_adj:
-        header += f" {'Miss-Adj%':<10}"
+        table_width += 12
 
-    print(header)
-    print("-" * len(header))
+    print("\n" + "┌" + "─" * (table_width - 2) + "┐")
+    title = "AGENT COMPARISON RESULTS"
+    padding = (table_width - len(title) - 2) // 2
+    print("│" + " " * padding + title + " " * (table_width - len(title) - padding - 2) + "│")
+    print("├" + "─" * (table_width - 2) + "┤")
 
+    # Build header
+    header_parts = []
+    header_parts.append(f"{'Agent':<30}")
+    if has_board_size:
+        header_parts.append(f"{'Board':^8}")
+    header_parts.append(f"{'Mean':>8}")
+    header_parts.append(f"{'Median':>8}")
+    header_parts.append(f"{'Std':>7}")
+    header_parts.append(f"{'Min':>6}")
+    header_parts.append(f"{'Max':>6}")
+    header_parts.append(f"{'Win%':>6}")
+    if has_adjacency:
+        header_parts.append(f"{'Adj%':>8}")
+    if has_miss_adj:
+        header_parts.append(f"{'Miss%':>8}")
+
+    print("│ " + " │ ".join(header_parts) + " │")
+    print("├" + "─" * (table_width - 2) + "┤")
+
+    # Print rows
     for _, row in df.iterrows():
-        line = f"{row['agent_name']:<25} "
+        row_parts = []
+        row_parts.append(f"{row['agent_name']:<30}")
         if has_board_size:
-            line += f"{row['board_size']:<8} "
-        line += (f"{row['mean_length']:<10.1f} "
-                 f"{row['median_length']:<10.1f} "
-                 f"{row['std_length']:<10.1f} "
-                 f"{row['min_length']:<8.0f} "
-                 f"{row['max_length']:<8.0f} "
-                 f"{row['win_rate']*100:<8.1f}")
+            row_parts.append(f"{row['board_size']:^8}")
+        row_parts.append(f"{row['mean_length']:>8.1f}")
+        row_parts.append(f"{row['median_length']:>8.1f}")
+        row_parts.append(f"{row['std_length']:>7.1f}")
+        row_parts.append(f"{row['min_length']:>6.0f}")
+        row_parts.append(f"{row['max_length']:>6.0f}")
+        row_parts.append(f"{row['win_rate']*100:>6.1f}")
         if has_adjacency:
-            line += f" {row['adjacency_rate']*100:<8.1f}"
+            row_parts.append(f"{row['adjacency_rate']*100:>8.1f}")
         if has_miss_adj:
-            line += f" {row['miss_adjacent_rate']*100:<10.1f}"
-        print(line)
+            row_parts.append(f"{row['miss_adjacent_rate']*100:>8.1f}")
 
-    print("="*80)
+        print("│ " + " │ ".join(row_parts) + " │")
+
+    print("└" + "─" * (table_width - 2) + "┘")
 
     # Find best agent
     best_idx = df['median_length'].idxmin()
     best_agent = df.loc[best_idx]
-    print(f"\n🏆 Best agent (by median): {best_agent['agent_name']} ({best_agent['median_length']:.1f} moves)")
 
-    # Comparison to baselines
-    print("\n📊 Baseline comparisons:")
+    # Summary section
+    print("\n┌─ SUMMARY " + "─" * (table_width - 12) + "┐")
+    print(f"│ 🏆 Best Agent (by median): {best_agent['agent_name']:<{table_width-32}} │")
+    print(f"│    Median: {best_agent['median_length']:.1f} moves  │  Mean: {best_agent['mean_length']:.1f} moves" + " " * (table_width - 55) + "│")
+
+    # Baseline comparisons if available
     random_row = df[df['agent_name'].str.contains('Random', case=False)]
     prob_row = df[df['agent_name'].str.contains('Probability', case=False)]
 
-    if not random_row.empty:
-        print(f"   Random baseline: {random_row.iloc[0]['median_length']:.1f} moves")
-    else:
-        print("   Random baseline: ~96 moves (from research)")
+    if not random_row.empty or not prob_row.empty:
+        print("│" + " " * (table_width - 2) + "│")
+        print(f"│ 📊 Baseline Comparisons:" + " " * (table_width - 27) + "│")
 
-    if not prob_row.empty:
-        print(f"   Probability baseline: {prob_row.iloc[0]['median_length']:.1f} moves")
-    else:
-        print("   Probability baseline: ~49 moves (near-optimal)")
+        if not random_row.empty:
+            print(f"│    Random: {random_row.iloc[0]['median_length']:.1f} moves (median)" + " " * (table_width - 33) + "│")
 
-    print("="*80)
+        if not prob_row.empty:
+            print(f"│    Probability: {prob_row.iloc[0]['median_length']:.1f} moves (median)" + " " * (table_width - 39) + "│")
+
+    print("└" + "─" * (table_width - 2) + "┘")
 
 
 def detect_board_size_from_config(model_path: Path) -> Optional[Tuple[int, int]]:
