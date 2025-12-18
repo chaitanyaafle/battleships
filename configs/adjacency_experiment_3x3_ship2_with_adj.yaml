@@ -1,0 +1,90 @@
+# Configuration for 3x3 board with single ship length 2, WITH adjacency rewards
+
+# Environment settings
+environment:
+  board_size: [3, 3]
+  render_mode: null
+  custom_ships:
+    destroyer: 2  # Single ship of length 2
+
+# Training settings
+training:
+  total_timesteps: 500000  # 500K timesteps for proper training
+  eval_freq: 50000
+  save_freq: 50000
+  n_eval_episodes: 10
+  verbose: 1
+
+# PPO-specific hyperparameters
+ppo:
+  learning_rate: 0.0003
+  n_steps: 2048
+  batch_size: 128
+  n_epochs: 10
+  gamma: 0.95
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.005
+  vf_coef: 1.0
+  max_grad_norm: 1.0
+  policy: "MultiInputPolicy"
+
+  policy_kwargs:
+    net_arch: [64, 64]
+    activation_fn: "relu"
+
+# DQN (not used, but kept for compatibility)
+dqn:
+  learning_rate: 0.0001
+  buffer_size: 50000
+  learning_starts: 1000
+  batch_size: 32
+  gamma: 0.99
+  tau: 1.0
+  target_update_interval: 500
+  train_freq: 4
+  gradient_steps: 1
+  exploration_fraction: 0.3
+  exploration_initial_eps: 1.0
+  exploration_final_eps: 0.05
+  max_grad_norm: 10
+  policy: "MultiInputPolicy"
+
+  policy_kwargs:
+    net_arch:
+      - 256
+      - 256
+      - 128
+    activation_fn: "relu"
+
+# Logging
+logging:
+  use_wandb: true
+  use_tensorboard: true
+  project_name: "battleship-rl-adjacency"
+  experiment_name: null
+  log_dir: "logs"
+  save_dir: "models"
+
+# Reward structure - WITH ADJACENCY REWARDS
+rewards:
+  miss: -1.0
+  hit: 2.0
+  sink: 5.0
+  win: 5.0
+  invalid: -50.0
+  adjacency_bonus: 25.0  # ENABLED
+  missed_adjacency_penalty: -15.0  # ENABLED
+  time_penalty: -0.3
+  escalation_threshold: 15
+  escalation_rate: -2.0
+
+# Evaluation
+evaluation:
+  deterministic: true
+  render: false
+  save_replay: false
+
+  baselines:
+    - random
+    - probability
