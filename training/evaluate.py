@@ -2,7 +2,7 @@
 
 import argparse
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 import numpy as np
 import pandas as pd
 
@@ -146,17 +146,35 @@ def print_comparison_table(df: pd.DataFrame):
     print("\n" + "="*80)
     print("AGENT COMPARISON")
     print("="*80)
-    print(f"{'Agent':<25} {'Mean':<10} {'Median':<10} {'Std':<10} {'Min':<8} {'Max':<8} {'Win %':<8}")
+
+    # Check if board_size column exists
+    has_board_size = 'board_size' in df.columns
+
+    if has_board_size:
+        print(f"{'Agent':<25} {'Board':<8} {'Mean':<10} {'Median':<10} {'Std':<10} {'Min':<8} {'Max':<8} {'Win %':<8}")
+    else:
+        print(f"{'Agent':<25} {'Mean':<10} {'Median':<10} {'Std':<10} {'Min':<8} {'Max':<8} {'Win %':<8}")
+
     print("-"*80)
 
     for _, row in df.iterrows():
-        print(f"{row['agent_name']:<25} "
-              f"{row['mean_length']:<10.1f} "
-              f"{row['median_length']:<10.1f} "
-              f"{row['std_length']:<10.1f} "
-              f"{row['min_length']:<8.0f} "
-              f"{row['max_length']:<8.0f} "
-              f"{row['win_rate']*100:<8.1f}")
+        if has_board_size:
+            print(f"{row['agent_name']:<25} "
+                  f"{row['board_size']:<8} "
+                  f"{row['mean_length']:<10.1f} "
+                  f"{row['median_length']:<10.1f} "
+                  f"{row['std_length']:<10.1f} "
+                  f"{row['min_length']:<8.0f} "
+                  f"{row['max_length']:<8.0f} "
+                  f"{row['win_rate']*100:<8.1f}")
+        else:
+            print(f"{row['agent_name']:<25} "
+                  f"{row['mean_length']:<10.1f} "
+                  f"{row['median_length']:<10.1f} "
+                  f"{row['std_length']:<10.1f} "
+                  f"{row['min_length']:<8.0f} "
+                  f"{row['max_length']:<8.0f} "
+                  f"{row['win_rate']*100:<8.1f}")
 
     print("="*80)
 
@@ -181,6 +199,63 @@ def print_comparison_table(df: pd.DataFrame):
         print("   Probability baseline: ~49 moves (near-optimal)")
 
     print("="*80)
+
+
+def detect_board_size_from_config(model_path: Path) -> Optional[Tuple[int, int]]:
+    """
+    Detect board size from model's config.yaml file.
+
+    Args:
+        model_path: Path to model file (e.g., final_model.zip)
+
+    Returns:
+        (rows, cols) tuple or None if config not found
+    """
+    # Look for config.yaml in the same directory as the model
+    config_path = model_path.parent / "config.yaml"
+
+    if not config_path.exists():
+        return None
+
+    try:
+        import yaml
+        with open(config_path, 'r') as f:
+            # Use FullLoader to handle PyTorch-specific tags in saved configs
+            config = yaml.load(f, Loader=yaml.FullLoader)
+
+        board_size = config.get('environment', {}).get('board_size')
+        if board_size and len(board_size) == 2:
+            return tuple(board_size)
+    except Exception as e:
+        print(f"Warning: Could not read config from {config_path}: {e}")
+
+    return None
+
+
+def group_models_by_board_size(model_paths: List[Path]) -> Dict[Tuple[int, int], List[Path]]:
+    """
+    Group model paths by their board size.
+
+    Args:
+        model_paths: List of paths to model files
+
+    Returns:
+        Dictionary mapping board_size -> list of model paths
+    """
+    groups = {}
+
+    for model_path in model_paths:
+        board_size = detect_board_size_from_config(model_path)
+
+        if board_size is None:
+            print(f"Warning: Could not detect board size for {model_path}, skipping")
+            continue
+
+        if board_size not in groups:
+            groups[board_size] = []
+        groups[board_size].append(model_path)
+
+    return groups
 
 
 def main():
@@ -230,74 +305,170 @@ def main():
         action='store_true',
         help='Show adjacency bonus and escalating penalty messages'
     )
+    parser.add_argument(
+        '--auto-detect-board-size',
+        action='store_true',
+        help='Auto-detect board size from each model\'s config.yaml (allows mixed board sizes)'
+    )
     args = parser.parse_args()
 
-    # Create environment
-    env = BattleshipEnv(board_size=tuple(args.board_size), verbose=args.env_verbose)
+    # Check if auto-detect mode is enabled
+    if args.auto_detect_board_size and args.models:
+        # Auto-detection mode: group models by board size
+        print("Auto-detecting board sizes from model configs...")
 
-    # Collect agents to evaluate
-    agents = []
+        model_paths = [Path(p) for p in args.models]
+        model_groups = group_models_by_board_size(model_paths)
 
-    # Add baseline agents
-    if args.baselines:
-        agents.append(RandomAgent("Random Agent"))
-        agents.append(ProbabilityAgent("Probability Agent (DataGenetics)"))
+        if not model_groups:
+            print("Error: No valid models found after board size detection!")
+            return
 
-    # Add trained models
-    if args.models:
-        for model_path in args.models:
-            model_path = Path(model_path)
-            if not model_path.exists():
-                print(f"Warning: Model not found: {model_path}")
+        all_results = []
+
+        # Evaluate each board size group
+        for board_size, group_model_paths in sorted(model_groups.items()):
+            print(f"\n{'='*80}")
+            print(f"Evaluating models trained on {board_size[0]}x{board_size[1]} board")
+            print(f"{'='*80}")
+
+            # Create environment for this board size
+            env = BattleshipEnv(board_size=board_size, verbose=args.env_verbose)
+
+            # Collect agents for this board size
+            agents = []
+
+            # Add baseline agents
+            if args.baselines:
+                agents.append(RandomAgent(f"Random ({board_size[0]}x{board_size[1]})"))
+                agents.append(ProbabilityAgent(f"Probability ({board_size[0]}x{board_size[1]})"))
+
+            # Add trained models
+            for model_path in group_model_paths:
+                # Try to infer agent name from path
+                if 'ppo' in str(model_path).lower():
+                    agent_name = f"PPO ({model_path.parent.name})"
+                elif 'dqn' in str(model_path).lower():
+                    agent_name = f"DQN ({model_path.parent.name})"
+                else:
+                    agent_name = f"RL ({model_path.parent.name})"
+
+                print(f"Loading model from {model_path}...", flush=True)
+                try:
+                    agent = RLAgent(
+                        name=agent_name,
+                        model_path=model_path,
+                        deterministic=True
+                    )
+                    agents.append(agent)
+                    print(f"✓ Loaded {agent_name}")
+                except Exception as e:
+                    print(f"Error loading {model_path}: {e}")
+
+            if not agents:
+                print(f"Warning: No agents to evaluate for {board_size[0]}x{board_size[1]} board")
                 continue
 
-            # Try to infer agent name from path
-            if 'ppo' in str(model_path).lower():
-                agent_name = f"PPO ({model_path.parent.name})"
-            elif 'dqn' in str(model_path).lower():
-                agent_name = f"DQN ({model_path.parent.name})"
-            else:
-                agent_name = f"RL ({model_path.parent.name})"
+            # Evaluate this group
+            print(f"\nEvaluating {len(agents)} agents over {args.n_episodes} episodes each...")
+            print(f"Random seed: {args.seed}")
 
-            print(f"Loading model from {model_path}...", flush=True)
-            try:
-                agent = RLAgent(
-                    name=agent_name,
-                    model_path=model_path,
-                    deterministic=True
-                )
-                agents.append(agent)
-                print(f"✓ Loaded {agent_name}")
-            except Exception as e:
-                print(f"Error loading {model_path}: {e}")
+            results_df = compare_agents(
+                agents,
+                env,
+                n_episodes=args.n_episodes,
+                seed=args.seed,
+                verbose=args.verbose
+            )
 
-    if not agents:
-        print("Error: No agents to evaluate!")
-        print("Use --baselines to evaluate baseline agents or --models to specify trained models")
-        return
+            # Add board size column
+            results_df['board_size'] = f"{board_size[0]}x{board_size[1]}"
+            all_results.append(results_df)
 
-    # Run comparison
-    print(f"\nEvaluating {len(agents)} agents over {args.n_episodes} episodes each...")
-    print(f"Board size: {args.board_size[0]}x{args.board_size[1]}")
-    print(f"Random seed: {args.seed}")
+        # Combine all results
+        if not all_results:
+            print("Error: No results to display!")
+            return
 
-    results_df = compare_agents(
-        agents,
-        env,
-        n_episodes=args.n_episodes,
-        seed=args.seed,
-        verbose=args.verbose
-    )
+        combined_results = pd.concat(all_results, ignore_index=True)
 
-    # Print results
-    print_comparison_table(results_df)
+        # Print combined results
+        print_comparison_table(combined_results)
 
-    # Save to CSV if requested
-    if args.output:
-        output_path = Path(args.output)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        results_df.to_csv(output_path, index=False)
-        print(f"\n✓ Results saved to {output_path}")
+        # Save to CSV if requested
+        if args.output:
+            output_path = Path(args.output)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            combined_results.to_csv(output_path, index=False)
+            print(f"\n✓ Results saved to {output_path}")
+
+    else:
+        # Standard mode: single board size for all models
+        env = BattleshipEnv(board_size=tuple(args.board_size), verbose=args.env_verbose)
+
+        # Collect agents to evaluate
+        agents = []
+
+        # Add baseline agents
+        if args.baselines:
+            agents.append(RandomAgent("Random Agent"))
+            agents.append(ProbabilityAgent("Probability Agent (DataGenetics)"))
+
+        # Add trained models
+        if args.models:
+            for model_path in args.models:
+                model_path = Path(model_path)
+                if not model_path.exists():
+                    print(f"Warning: Model not found: {model_path}")
+                    continue
+
+                # Try to infer agent name from path
+                if 'ppo' in str(model_path).lower():
+                    agent_name = f"PPO ({model_path.parent.name})"
+                elif 'dqn' in str(model_path).lower():
+                    agent_name = f"DQN ({model_path.parent.name})"
+                else:
+                    agent_name = f"RL ({model_path.parent.name})"
+
+                print(f"Loading model from {model_path}...", flush=True)
+                try:
+                    agent = RLAgent(
+                        name=agent_name,
+                        model_path=model_path,
+                        deterministic=True
+                    )
+                    agents.append(agent)
+                    print(f"✓ Loaded {agent_name}")
+                except Exception as e:
+                    print(f"Error loading {model_path}: {e}")
+
+        if not agents:
+            print("Error: No agents to evaluate!")
+            print("Use --baselines to evaluate baseline agents or --models to specify trained models")
+            return
+
+        # Run comparison
+        print(f"\nEvaluating {len(agents)} agents over {args.n_episodes} episodes each...")
+        print(f"Board size: {args.board_size[0]}x{args.board_size[1]}")
+        print(f"Random seed: {args.seed}")
+
+        results_df = compare_agents(
+            agents,
+            env,
+            n_episodes=args.n_episodes,
+            seed=args.seed,
+            verbose=args.verbose
+        )
+
+        # Print results
+        print_comparison_table(results_df)
+
+        # Save to CSV if requested
+        if args.output:
+            output_path = Path(args.output)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            results_df.to_csv(output_path, index=False)
+            print(f"\n✓ Results saved to {output_path}")
 
 
 if __name__ == "__main__":

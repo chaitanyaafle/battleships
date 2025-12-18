@@ -2,7 +2,7 @@
 
 # Environment settings
 environment:
-  board_size: [3, 3]  # (rows, cols)
+  board_size: [4, 4]  # (rows, cols)
   render_mode: null  # Set to "human" or "ansi" for debugging
 
 # Training settings
@@ -67,7 +67,7 @@ dqn:
 logging:
   use_wandb: true  # Enable Weights & Biases logging
   use_tensorboard: true  # Enable TensorBoard logging
-  project_name: "battleship-rl"  # W&B project name
+  project_name: "battleship-rl-adjacency"  # W&B project name
   experiment_name: null  # Auto-generated if null
   log_dir: "logs"  # Directory for TensorBoard logs
   save_dir: "models"  # Directory for model checkpoints

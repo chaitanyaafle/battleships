@@ -163,7 +163,7 @@ class BattleshipEnv(gym.Env):
                 self.adjacency_taken += 1
             else:
                 # Penalty for ignoring adjacency when opportunities exist
-                missed_adjacency_penalty = -15.0
+                missed_adjacency_penalty += 0.0 #-15.0
                 if self.verbose:
                     print(f"❌ MISSED ADJACENCY PENALTY! Ignored {len(adjacent_to_hits)} adjacent cells → -10.0")
 
@@ -257,8 +257,8 @@ class BattleshipEnv(gym.Env):
             r, c = row + dr, col + dc
             if (r, c) in unsunk_hits:
                 if self.verbose:
-                    print(f"🎯 ADJACENCY BONUS! Attack ({row},{col}) adjacent to unsunk hit at ({r},{c}) → +15.0")
-                return 25.0
+                    print(f"🎯 ADJACENCY BONUS! Attack ({row},{col}) adjacent to unsunk hit at ({r},{c}) → +0.0")
+                return 0.0
         return 0.0
 
     def _process_attack(self, row: int, col: int) -> Tuple[float, Dict]:
