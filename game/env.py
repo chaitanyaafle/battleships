@@ -25,7 +25,9 @@ class BattleshipEnv(gym.Env):
         ship_placement: Optional[Dict[str, list]] = None,
         allow_adjacent_ships: bool = True,
         max_episode_length: Optional[int] = None,
-        verbose: bool = False
+        verbose: bool = False,
+        custom_ships: Optional[Dict[str, int]] = None,
+        rewards: Optional[Dict[str, float]] = None
     ):
         """
         Initialize environment.
@@ -38,6 +40,8 @@ class BattleshipEnv(gym.Env):
                                  If False, enforces no-touch constraint.
             max_episode_length: Maximum steps per episode. If None, defaults to 2 × total board cells.
             verbose: If True, print debug messages for adjacency bonus and escalating penalty
+            custom_ships: Optional custom ship configuration (e.g., {"destroyer": 2, "cruiser": 3})
+            rewards: Optional custom reward values (e.g., {"hit": 2.0, "adjacency_bonus": 25.0})
         """
         super().__init__()
 
@@ -49,6 +53,10 @@ class BattleshipEnv(gym.Env):
         self.manual_placement = ship_placement
         self.allow_adjacent_ships = allow_adjacent_ships
         self.verbose = verbose
+        self.custom_ships = custom_ships
+
+        # Set reward values (use custom or defaults)
+        self.rewards = self._init_rewards(rewards)
 
         # Calculate max episode length
         if max_episode_length is None:
@@ -81,6 +89,36 @@ class BattleshipEnv(gym.Env):
         })
 
         self.state: Optional[GameState] = None
+
+    def _init_rewards(self, custom_rewards: Optional[Dict[str, float]] = None) -> Dict[str, float]:
+        """
+        Initialize reward values.
+
+        Args:
+            custom_rewards: Optional custom reward values
+
+        Returns:
+            Dictionary of reward values
+        """
+        # Default reward structure
+        defaults = {
+            'miss': -1.0,
+            'hit': 2.0,
+            'sink': 5.0,
+            'win': 5.0,
+            'invalid': -50.0,
+            'adjacency_bonus': 0.0,
+            'missed_adjacency_penalty': 0.0,
+            'time_penalty': -0.3,
+            'escalation_threshold': 15,
+            'escalation_rate': -2.0
+        }
+
+        # Override with custom values if provided
+        if custom_rewards:
+            defaults.update(custom_rewards)
+
+        return defaults
 
     def reset(
         self,
@@ -136,7 +174,7 @@ class BattleshipEnv(gym.Env):
         if not self.action_space.contains(action):
             return (
                 self.state.get_observation(),
-                -50.0,  # Invalid move penalty
+                self.rewards['invalid'],
                 False,
                 False,
                 {"error": "Action out of bounds", "result": "invalid"}
@@ -148,7 +186,7 @@ class BattleshipEnv(gym.Env):
         if self.state.attack_board[row, col] != 0:
             return (
                 self.state.get_observation(),
-                -50.0,  # Invalid move penalty
+                self.rewards['invalid'],
                 False,
                 False,
                 {"error": f"Cell ({row}, {col}) already attacked", "result": "invalid"}
@@ -163,9 +201,9 @@ class BattleshipEnv(gym.Env):
                 self.adjacency_taken += 1
             else:
                 # Penalty for ignoring adjacency when opportunities exist
-                missed_adjacency_penalty += 0.0 #-15.0
-                if self.verbose:
-                    print(f"❌ MISSED ADJACENCY PENALTY! Ignored {len(adjacent_to_hits)} adjacent cells → -10.0")
+                missed_adjacency_penalty = self.rewards['missed_adjacency_penalty']
+                if self.verbose and missed_adjacency_penalty != 0:
+                    print(f"❌ MISSED ADJACENCY PENALTY! Ignored {len(adjacent_to_hits)} adjacent cells → {missed_adjacency_penalty}")
 
         # Process attack
         reward, info = self._process_attack(row, col)
@@ -256,9 +294,10 @@ class BattleshipEnv(gym.Env):
         for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
             r, c = row + dr, col + dc
             if (r, c) in unsunk_hits:
-                if self.verbose:
-                    print(f"🎯 ADJACENCY BONUS! Attack ({row},{col}) adjacent to unsunk hit at ({r},{c}) → +0.0")
-                return 0.0
+                bonus = self.rewards['adjacency_bonus']
+                if self.verbose and bonus != 0:
+                    print(f"🎯 ADJACENCY BONUS! Attack ({row},{col}) adjacent to unsunk hit at ({r},{c}) → +{bonus}")
+                return bonus
         return 0.0
 
     def _process_attack(self, row: int, col: int) -> Tuple[float, Dict]:
@@ -274,14 +313,14 @@ class BattleshipEnv(gym.Env):
             info: Information dict with result and ship_sunk
         """
         # Base time penalty to encourage efficiency
-        TIME_PENALTY = -0.3
+        time_penalty = self.rewards['time_penalty']
 
-        # Escalating penalty for taking too long (5x5 board: optimal ~10-15 moves)
-        ESCALATION_THRESHOLD = 15
-        if self.state.move_count > ESCALATION_THRESHOLD:
-            escalating_penalty = (self.state.move_count - ESCALATION_THRESHOLD) * -2.0
+        # Escalating penalty for taking too long
+        escalation_threshold = int(self.rewards['escalation_threshold'])
+        if self.state.move_count > escalation_threshold:
+            escalating_penalty = (self.state.move_count - escalation_threshold) * self.rewards['escalation_rate']
             if self.verbose:
-                print(f"ESCALATING PENALTY! Move {self.state.move_count} > {ESCALATION_THRESHOLD} → {escalating_penalty:.1f}")
+                print(f"ESCALATING PENALTY! Move {self.state.move_count} > {escalation_threshold} → {escalating_penalty:.1f}")
         else:
             escalating_penalty = 0.0
 
@@ -289,7 +328,7 @@ class BattleshipEnv(gym.Env):
 
         if cell_value == 0:  # Miss
             self.state.attack_board[row, col] = 1
-            return -1.0 + TIME_PENALTY + escalating_penalty, {"result": "miss", "ship_sunk": None}
+            return self.rewards['miss'] + time_penalty + escalating_penalty, {"result": "miss", "ship_sunk": None}
 
         else:  # Hit
             self.state.attack_board[row, col] = 2
@@ -310,14 +349,14 @@ class BattleshipEnv(gym.Env):
             all_sunk = all(s.is_sunk for s in self.state.ships.values())
             if all_sunk:
                 self.state.done = True
-                return 5.0 + adjacency_bonus + TIME_PENALTY + escalating_penalty, {"result": "win", "ship_sunk": ship_sunk}
+                return self.rewards['win'] + adjacency_bonus + time_penalty + escalating_penalty, {"result": "win", "ship_sunk": ship_sunk}
 
             # Ship sunk but game continues
             if ship_sunk:
-                return 5.0 + adjacency_bonus + TIME_PENALTY + escalating_penalty, {"result": "hit", "ship_sunk": ship_sunk}
+                return self.rewards['sink'] + adjacency_bonus + time_penalty + escalating_penalty, {"result": "hit", "ship_sunk": ship_sunk}
 
             # Regular hit
-            return 2.0 + adjacency_bonus + TIME_PENALTY + escalating_penalty, {"result": "hit", "ship_sunk": None}
+            return self.rewards['hit'] + adjacency_bonus + time_penalty + escalating_penalty, {"result": "hit", "ship_sunk": None}
 
     def render(self):
         """Render the environment based on render_mode."""
@@ -336,7 +375,7 @@ class BattleshipEnv(gym.Env):
 
     def _create_initial_state(self) -> GameState:
         """Create initial game state with ships placed."""
-        ship_config = get_ship_config(self.board_size)
+        ship_config = get_ship_config(self.board_size, custom_ships=self.custom_ships)
 
         if self.manual_placement:
             # Use manual placement (with validation)

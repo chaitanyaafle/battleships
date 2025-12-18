@@ -165,7 +165,9 @@ def main():
     env = BattleshipEnv(
         board_size=tuple(config['environment']['board_size']),
         render_mode=config['environment']['render_mode'],
-        verbose=args.env_verbose
+        verbose=args.env_verbose,
+        custom_ships=config['environment'].get('custom_ships'),
+        rewards=config.get('rewards')
     )
 
     # Wrap with action masker
@@ -182,7 +184,9 @@ def main():
     # Create eval environment
     eval_env = BattleshipEnv(
         board_size=tuple(config['environment']['board_size']),
-        verbose=args.env_verbose
+        verbose=args.env_verbose,
+        custom_ships=config['environment'].get('custom_ships'),
+        rewards=config.get('rewards')
     )
     eval_env = ActionMasker(eval_env, mask_fn)
     eval_env = Monitor(eval_env, str(log_dir / "eval"))
