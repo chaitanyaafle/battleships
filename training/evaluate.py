@@ -35,6 +35,8 @@ def evaluate_agent(
     """
     episode_lengths = []
     episode_rewards = []
+    adjacency_rates = []
+    miss_adjacent_rates = []
     wins = 0
 
     if seed is not None:
@@ -75,6 +77,12 @@ def evaluate_agent(
         episode_lengths.append(episode_length)
         episode_rewards.append(episode_reward)
 
+        # Collect adjacency metrics from final info
+        if 'adjacency_rate' in info:
+            adjacency_rates.append(info['adjacency_rate'])
+        if 'miss_adjacent_rate' in info:
+            miss_adjacent_rates.append(info['miss_adjacent_rate'])
+
         # Check if won (all ships sunk)
         if info.get('result') == 'win':
             wins += 1
@@ -83,7 +91,7 @@ def evaluate_agent(
             win_status = "WIN" if info.get('result') == 'win' else "TRUNCATED" if truncated else "?"
             print(f" Done! {episode_length} moves, reward={episode_reward:.1f} [{win_status}]")
 
-    return {
+    result = {
         'agent_name': agent.name,
         'n_episodes': n_episodes,
         'mean_length': np.mean(episode_lengths),
@@ -95,6 +103,14 @@ def evaluate_agent(
         'std_reward': np.std(episode_rewards),
         'win_rate': wins / n_episodes,
     }
+
+    # Add adjacency metrics if available
+    if adjacency_rates:
+        result['adjacency_rate'] = np.mean(adjacency_rates)
+    if miss_adjacent_rates:
+        result['miss_adjacent_rate'] = np.mean(miss_adjacent_rates)
+
+    return result
 
 
 def compare_agents(
@@ -147,34 +163,39 @@ def print_comparison_table(df: pd.DataFrame):
     print("AGENT COMPARISON")
     print("="*80)
 
-    # Check if board_size column exists
+    # Check if board_size and adjacency metrics exist
     has_board_size = 'board_size' in df.columns
+    has_adjacency = 'adjacency_rate' in df.columns
+    has_miss_adj = 'miss_adjacent_rate' in df.columns
 
+    # Build header based on available columns
+    header = f"{'Agent':<25} "
     if has_board_size:
-        print(f"{'Agent':<25} {'Board':<8} {'Mean':<10} {'Median':<10} {'Std':<10} {'Min':<8} {'Max':<8} {'Win %':<8}")
-    else:
-        print(f"{'Agent':<25} {'Mean':<10} {'Median':<10} {'Std':<10} {'Min':<8} {'Max':<8} {'Win %':<8}")
+        header += f"{'Board':<8} "
+    header += f"{'Mean':<10} {'Median':<10} {'Std':<10} {'Min':<8} {'Max':<8} {'Win %':<8}"
+    if has_adjacency:
+        header += f" {'Adj%':<8}"
+    if has_miss_adj:
+        header += f" {'Miss-Adj%':<10}"
 
-    print("-"*80)
+    print(header)
+    print("-" * len(header))
 
     for _, row in df.iterrows():
+        line = f"{row['agent_name']:<25} "
         if has_board_size:
-            print(f"{row['agent_name']:<25} "
-                  f"{row['board_size']:<8} "
-                  f"{row['mean_length']:<10.1f} "
-                  f"{row['median_length']:<10.1f} "
-                  f"{row['std_length']:<10.1f} "
-                  f"{row['min_length']:<8.0f} "
-                  f"{row['max_length']:<8.0f} "
-                  f"{row['win_rate']*100:<8.1f}")
-        else:
-            print(f"{row['agent_name']:<25} "
-                  f"{row['mean_length']:<10.1f} "
-                  f"{row['median_length']:<10.1f} "
-                  f"{row['std_length']:<10.1f} "
-                  f"{row['min_length']:<8.0f} "
-                  f"{row['max_length']:<8.0f} "
-                  f"{row['win_rate']*100:<8.1f}")
+            line += f"{row['board_size']:<8} "
+        line += (f"{row['mean_length']:<10.1f} "
+                 f"{row['median_length']:<10.1f} "
+                 f"{row['std_length']:<10.1f} "
+                 f"{row['min_length']:<8.0f} "
+                 f"{row['max_length']:<8.0f} "
+                 f"{row['win_rate']*100:<8.1f}")
+        if has_adjacency:
+            line += f" {row['adjacency_rate']*100:<8.1f}"
+        if has_miss_adj:
+            line += f" {row['miss_adjacent_rate']*100:<10.1f}"
+        print(line)
 
     print("="*80)
 
