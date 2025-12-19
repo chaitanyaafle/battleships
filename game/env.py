@@ -109,6 +109,7 @@ class BattleshipEnv(gym.Env):
             'invalid': -50.0,
             'adjacency_bonus': 0.0,
             'missed_adjacency_penalty': 0.0,
+            'miss_adjacent_penalty': 0.0,
             'time_penalty': -0.3,
             'escalation_threshold': 15,
             'escalation_rate': -2.0
@@ -212,14 +213,19 @@ class BattleshipEnv(gym.Env):
         # Track miss-adjacency (inefficient parity behavior)
         # Count opportunities when misses exist, track if agent chooses adjacent cell
         miss_coords = self._get_miss_coords()
+        miss_adjacent_penalty = 0.0
         if len(miss_coords) > 0:  # If there are any misses on the board
             self.miss_adjacent_opportunities += 1
             if self._is_adjacent_to_miss(row, col):
                 self.miss_adjacent_taken += 1
+                # Apply penalty for shooting adjacent to a miss (discourage poor parity)
+                miss_adjacent_penalty = self.rewards.get('miss_adjacent_penalty', 0.0)
+                if self.verbose and miss_adjacent_penalty != 0:
+                    print(f"⚠️  MISS-ADJACENT PENALTY! Shot adjacent to previous miss → {miss_adjacent_penalty}")
 
         # Process attack
         reward, info = self._process_attack(row, col)
-        reward += missed_adjacency_penalty
+        reward += missed_adjacency_penalty + miss_adjacent_penalty
 
         # Update move count
         self.state.move_count += 1
