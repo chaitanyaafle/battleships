@@ -60,12 +60,12 @@ class BattleshipCNN(BaseFeaturesExtractor):
             padding=1
         )
 
-        # Adaptive pooling: reduces spatial dims to fixed 2x2
-        # Works for any board size (3x3, 4x4, 5x5, etc.)
-        self.adaptive_pool = nn.AdaptiveAvgPool2d((2, 2))
+        # Global average pooling: reduces spatial dims to 1x1
+        # Works for any board size and is MPS-compatible
+        self.global_pool = nn.AdaptiveAvgPool2d((1, 1))
 
         # Calculate flattened CNN output size
-        cnn_output_size = 64 * 2 * 2  # 256
+        cnn_output_size = 64  # After global pooling: 64 x 1 x 1 → 64
 
         # Combine CNN features with auxiliary inputs
         combined_size = cnn_output_size + remaining_ships_dim + move_count_dim
@@ -101,10 +101,10 @@ class BattleshipCNN(BaseFeaturesExtractor):
         x = self.relu(self.conv1(x))  # (batch, 32, H, W)
         x = self.relu(self.conv2(x))  # (batch, 64, H, W)
 
-        # Adaptive pooling: (batch, 64, H, W) → (batch, 64, 2, 2)
-        x = self.adaptive_pool(x)
+        # Global average pooling: (batch, 64, H, W) → (batch, 64, 1, 1)
+        x = self.global_pool(x)
 
-        # Flatten CNN output: (batch, 64, 2, 2) → (batch, 256)
+        # Flatten CNN output: (batch, 64, 1, 1) → (batch, 64)
         x = torch.flatten(x, start_dim=1)
 
         # Concatenate with auxiliary inputs
