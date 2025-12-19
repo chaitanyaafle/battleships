@@ -6,3 +6,13 @@ sb3-contrib>=2.0.0
 wandb>=0.16.0
 tensorboard>=2.15.0
 pyyaml>=6.0.0
+
+# LLM fine-tuning (Phase 1: Zero-shot + inference)
+transformers>=4.40.0
+accelerate>=0.28.0
+
+# LLM fine-tuning (Phase 3: SFT + GRPO) - install when needed
+# trl>=0.8.0
+# peft>=0.10.0
+# datasets>=2.18.0
+# bitsandbytes>=0.43.0  # For 8-bit quantization
