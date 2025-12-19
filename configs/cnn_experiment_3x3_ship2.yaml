@@ -1,0 +1,98 @@
+# CNN Architecture Experiment: 3x3 board, ship length 2
+# Test if spatial inductive bias enables emergent parity learning
+
+# Environment settings
+environment:
+  board_size: [3, 3]
+  render_mode: null
+  custom_ships:
+    destroyer: 2  # Single ship of length 2
+
+# Training settings
+training:
+  total_timesteps: 2000000  # 2M timesteps for emergence
+  eval_freq: 200000
+  save_freq: 200000
+  n_eval_episodes: 10
+  verbose: 1
+
+# PPO-specific hyperparameters
+ppo:
+  learning_rate: 0.0003
+  n_steps: 2048
+  batch_size: 64  # Smaller batches for more frequent updates
+  n_epochs: 10
+  gamma: 0.995  # Higher discount (was 0.95) - long-term planning
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.01  # Higher entropy (was 0.005) - maintain exploration
+  vf_coef: 1.0
+  max_grad_norm: 1.0
+  policy: "MultiInputPolicy"
+
+  policy_kwargs:
+    # Use custom CNN feature extractor
+    features_extractor_class: "game.cnn_policy:BattleshipCNN"
+    features_extractor_kwargs:
+      features_dim: 256  # Increased from 128 for richer representations
+
+    # 2-layer MLP head (matches MLP baseline structure)
+    net_arch: [128, 64]
+    activation_fn: "relu"
+
+# DQN (not used)
+dqn:
+  learning_rate: 0.0001
+  buffer_size: 50000
+  learning_starts: 1000
+  batch_size: 32
+  gamma: 0.99
+  tau: 1.0
+  target_update_interval: 500
+  train_freq: 4
+  gradient_steps: 1
+  exploration_fraction: 0.3
+  exploration_initial_eps: 1.0
+  exploration_final_eps: 0.05
+  max_grad_norm: 10
+  policy: "MultiInputPolicy"
+
+  policy_kwargs:
+    net_arch:
+      - 256
+      - 256
+      - 128
+    activation_fn: "relu"
+
+# Logging
+logging:
+  use_wandb: true
+  use_tensorboard: true
+  project_name: "battleship-rl-cnn"
+  experiment_name: null
+  log_dir: "logs"
+  save_dir: "models"
+
+# Reward structure - NO SHAPING (test emergent learning)
+rewards:
+  miss: -1.0
+  hit: 2.0
+  sink: 5.0
+  win: 5.0
+  invalid: -50.0
+  adjacency_bonus: 0.0  # No bonus
+  missed_adjacency_penalty: 0.0  # No penalty
+  miss_adjacent_penalty: 0.0  # No parity penalty
+  time_penalty: -0.3
+  escalation_threshold: 15
+  escalation_rate: -2.0
+
+# Evaluation
+evaluation:
+  deterministic: true
+  render: false
+  save_replay: false
+
+  baselines:
+    - random
+    - probability

@@ -206,6 +206,20 @@ def main():
     ppo_config = config['ppo'].copy()
     policy_kwargs = ppo_config.pop('policy_kwargs', {})
 
+    # Handle custom feature extractor (e.g., CNN)
+    if 'features_extractor_class' in policy_kwargs:
+        extractor_path = policy_kwargs['features_extractor_class']
+        # Parse "module.path:ClassName" format
+        module_path, class_name = extractor_path.split(':')
+
+        # Import the module dynamically
+        import importlib
+        module = importlib.import_module(module_path)
+        extractor_class = getattr(module, class_name)
+
+        policy_kwargs['features_extractor_class'] = extractor_class
+        print(f"  Custom feature extractor: {class_name}")
+
     if 'activation_fn' in policy_kwargs:
         if policy_kwargs['activation_fn'] == 'relu':
             import torch.nn as nn
