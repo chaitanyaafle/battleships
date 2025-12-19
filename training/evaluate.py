@@ -262,8 +262,22 @@ def detect_board_size_from_config(model_path: Path) -> Optional[Tuple[int, int]]
     try:
         import yaml
         with open(config_path, 'r') as f:
-            # Use FullLoader to handle PyTorch-specific tags in saved configs
-            config = yaml.load(f, Loader=yaml.FullLoader)
+            # Read file content first
+            content = f.read()
+
+        # Try safe_load first (doesn't construct Python objects)
+        try:
+            config = yaml.safe_load(content)
+        except yaml.YAMLError:
+            # If that fails, try loading with a custom constructor that ignores unknown tags
+            class SafeLoaderIgnoreUnknown(yaml.SafeLoader):
+                pass
+
+            def construct_undefined(self, node):
+                return None
+
+            SafeLoaderIgnoreUnknown.add_constructor(None, construct_undefined)
+            config = yaml.load(content, Loader=SafeLoaderIgnoreUnknown)
 
         board_size = config.get('environment', {}).get('board_size')
         if board_size and len(board_size) == 2:

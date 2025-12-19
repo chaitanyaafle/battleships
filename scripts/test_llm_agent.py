@@ -40,7 +40,7 @@ def main():
         agent = LLMAgent(
             name=f"LLM-Zero-Shot",
             model_name=model_name,
-            device="mps",  # Use "cuda" for NVIDIA GPUs, "cpu" for CPU
+            device="cpu",  # Use CPU for stability (MPS has compatibility issues)
             temperature=0.1,  # Low temp for more deterministic outputs
         )
 

@@ -48,9 +48,13 @@ class LLMAgent(BattleshipAgent):
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
         model_kwargs = {
-            "torch_dtype": torch.float16,
-            "device_map": device,
+            "torch_dtype": torch.float16 if device != "cpu" else torch.float32,
         }
+
+        # Only use device_map for GPU devices
+        if device in ["cuda", "mps"]:
+            model_kwargs["device_map"] = device
+
         if load_in_8bit:
             model_kwargs["load_in_8bit"] = True
         if use_flash_attention:
@@ -60,6 +64,11 @@ class LLMAgent(BattleshipAgent):
             model_name,
             **model_kwargs
         )
+
+        # Move to device if CPU
+        if device == "cpu":
+            self.model = self.model.to(device)
+
         self.model.eval()
         print(f"✓ Model loaded successfully")
 
