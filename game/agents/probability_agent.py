@@ -74,15 +74,21 @@ class ProbabilityAgent(BattleshipAgent):
         # Find all cells with maximum probability
         max_prob = np.max(self.probability_grid)
         if max_prob == 0:
-            # No valid placements found - should not happen in normal game
-            raise ValueError("No valid ship placements possible")
+            # No valid placements found - fallback to random unattacked cell
+            # This can happen in edge cases with inconsistent board states
+            unattacked = np.argwhere(attack_board == 0)
+            if len(unattacked) == 0:
+                raise ValueError("No valid moves remaining")
+            idx = np.random.randint(len(unattacked))
+            row, col = unattacked[idx]
+            action = int(row * cols + col)
+        else:
+            # Get all cells with max probability
+            max_cells = np.argwhere(self.probability_grid == max_prob)
 
-        # Get all cells with max probability
-        max_cells = np.argwhere(self.probability_grid == max_prob)
-
-        # Tie-breaking: select first cell (top-left to bottom-right)
-        row, col = max_cells[0]
-        action = int(row * cols + col)
+            # Tie-breaking: select first cell (top-left to bottom-right)
+            row, col = max_cells[0]
+            action = int(row * cols + col)
 
         # Store for visualization
         self.last_action = action
