@@ -35,16 +35,18 @@ def main():
     print("   This will download ~6GB if model not cached...")
 
     model_name = "meta-llama/Llama-3.2-3B-Instruct"
+    # model_name = "Qwen/Qwen2-1.5B-Instruct"
 
     try:
         agent = LLMAgent(
             name=f"LLM-Zero-Shot",
             model_name=model_name,
+            max_new_tokens=10,
             device="cpu",  # Use CPU for stability (MPS has compatibility issues)
             temperature=0.1,  # Low temp for more deterministic outputs
         )
 
-        results = evaluate_agent(agent, env, n_episodes=10, seed=42)
+        results = evaluate_agent(agent, env, n_episodes=3, seed=42)
 
         print(f"\n   ✓ LLM Agent Results:")
         print(f"     Mean moves: {results['mean_length']:.1f}")
