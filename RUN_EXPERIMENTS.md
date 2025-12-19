@@ -94,11 +94,7 @@ python training/train_ppo_masked.py --config configs/adjacency_experiment_5x5_sh
 
 ```bash
 # Evaluate all models with auto-detected board sizes
-python training/evaluate.py \
-  --models models/adjacency_experiment/*/final_model.zip \
-  --auto-detect-board-size \
-  --baselines \
-  --n-episodes 100
+python training/evaluate.py --models models/adjacency_experiment/*/final_model.zip --auto-detect-board-size --n-episodes 100
 ```
 
 ---

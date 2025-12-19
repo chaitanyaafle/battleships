@@ -1369,3 +1369,15 @@ CMD ["python", "experiments/reproduce_all_results.py"]
 ---
 
 **This plan prioritizes rigor, reproducibility, and portfolio impact. Execute methodically, track everything, and ship a project that demonstrates world-class research capability.**
+
+
+Gemini prompt:
+So i am training an agent to play the game of battleship. There is no adversary. The goal is to make the agent learn the optimal strategy -- the agent has two modes of operation:
+1. target/exploitation mode: 
+a) if for a move, there is a hit on a ship, the next move should be on a cell adjacent to the one just hit. 
+b) Added complexity: if the ship did not sink, then continue in a straight path on either directions till the ship sinks. 
+2. parity/exploration mode: 
+a) For a move, if there is a miss, do not choose the adjacent cells, but the cell one over the adjacent cells. this give more coverage. 
+b) Added complexity: if the length of the ship is 2, then alternate parity exploration is optimal, but if it is 3, the agent should skip 2 cells after a miss to explore further. 
+
+I am using PPO. I am able to achieve 1.a with and without reward shaping. I am not able to achieve 2.a without reward shaping -- but with reward shaping, i can. 1.b and 2b are too complicated right now. What would be my best bet to make the agent learn 2a without reward shaping, and as an emergent behaviour? what about 1.b, 2b?
